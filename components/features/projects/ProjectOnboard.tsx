@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { projectService } from '@/lib/services/container';
+import { useCreateProject } from '@/lib/query/projects';
 import type { FieldError } from 'react-hook-form';
 
 const schema = z.object({
@@ -28,6 +28,8 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
   const [created, setCreated] = useState(false);
   const [newProject, setNewProject] = useState<Project | null>(null);
 
+  const createProject = useCreateProject();
+
   type FormValues = z.infer<typeof schema>;
 
   const form = useForm<FormValues>({
@@ -41,17 +43,20 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
   });
 
   const onSubmit = (data: z.infer<typeof schema>) => {
-    projectService
-      .createProject({
+    createProject.mutate(
+      {
         client: data.client,
         project: data.project,
         address: data.address ?? '',
         hourlyRate: Number(data.hourlyRate),
-      })
-      .then((createdProject) => {
-        setNewProject(createdProject);
-        setCreated(true);
-      });
+      },
+      {
+        onSuccess: (createdProject) => {
+          setNewProject(createdProject);
+          setCreated(true);
+        },
+      }
+    );
   };
 
   if (created && newProject) {
@@ -94,7 +99,10 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
       <p className="mt-2 text-sm text-[#85857a]">
         Get started with a new client project.
       </p>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="mt-8 space-y-4"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             label="Client name"
@@ -120,7 +128,7 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
         <Button
           type="submit"
           className="mt-6 w-full rounded-xl bg-[#bd765b] text-white"
-          disabled={form.formState.isSubmitting}
+          disabled={form.formState.isSubmitting || createProject.isPending}
         >
           Create project
         </Button>

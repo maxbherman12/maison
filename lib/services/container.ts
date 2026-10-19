@@ -1,13 +1,15 @@
-import { MemoryProjectRepository, MemoryInvoiceRepository } from '@/lib/repository/memory';
+import 'server-only';
+import { PostgresProjectRepository, PostgresInvoiceRepository } from '@/lib/repository/postgres';
 import { ProjectService } from '@/lib/services/projects';
 import { InvoiceService } from '@/lib/services/invoices';
 import { PdfInvoiceGenerator } from '@/lib/services/invoices';
 
 // Singleton container for dependency injection.
-// Repositories are in-memory by default; swap implementations here to connect
-// a real database or external service without touching service or UI code.
-const projectRepository = new MemoryProjectRepository();
-const invoiceRepository = new MemoryInvoiceRepository();
+// Postgres repositories are used in all environments; swap implementations here
+// to connect a different database or external service without touching service
+// or UI code.
+const projectRepository = new PostgresProjectRepository();
+const invoiceRepository = new PostgresInvoiceRepository();
 const invoiceGenerator = new PdfInvoiceGenerator();
 
 export const projectService = new ProjectService(projectRepository);
