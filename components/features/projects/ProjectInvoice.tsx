@@ -1,0 +1,132 @@
+'use client';
+
+import { useState } from 'react';
+import { ArrowLeft, FileText, X } from 'lucide-react';
+import type { Project } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { formatMoney } from '@/lib/types';
+import { useGenerateInvoice } from '@/lib/query/invoices';
+
+interface ProjectInvoiceProps {
+  project: Project;
+  onBack: () => void;
+}
+
+export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
+  const [generated, setGenerated] = useState(false);
+  const [invoicePath, setInvoicePath] = useState<string | null>(null);
+
+  const generateInvoice = useGenerateInvoice({
+    onSuccess: (data) => {
+      setInvoicePath(data.pathname ?? null);
+      setGenerated(true);
+    },
+  });
+
+  const lineItems = project.hours.map((entry) => ({
+    title: entry.title,
+    amount: entry.amount,
+  }));
+
+  const handleGenerate = () => {
+    generateInvoice.mutate({
+      projectId: project.id,
+      client: project.client,
+      project: project.project,
+      total: project.outstanding,
+      items: lineItems,
+    });
+  };
+
+  if (generateInvoice.isPending) {
+    return (
+      <div className="mx-auto max-w-2xl py-10 flex flex-col items-center justify-center">
+        <p className="text-sm text-[#85857a]">Generating invoice...</p>
+      </div>
+    );
+  }
+
+  if (generateInvoice.error) {
+    return (
+      <div className="mx-auto max-w-2xl py-10 text-center">
+        <p className="text-destructive">
+          Failed to generate invoice. Please try again.
+        </p>
+        <Button onClick={handleGenerate} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="flex items-center gap-2 mb-8">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
+          aria-label="Back to project"
+        >
+          <ArrowLeft className="size-3.5" /> Back to {project.project}
+        </button>
+      </div>
+
+      {generated && invoicePath ? (
+        <div className="animate-in fade-in zoom-in duration-300">
+          <div className="mt-8 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-serif text-2xl">Invoice generated</h2>
+              <button
+                onClick={() => {
+                  setGenerated(false);
+                  setInvoicePath(null);
+                }}
+                aria-label="Close"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[#85857a]">
+              Your PDF invoice has been generated and saved.
+            </p>
+            <div className="mt-6">
+              <a
+                href={invoicePath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-[#bd765b] hover:underline"
+              >
+                <FileText className="size-4" /> View invoice
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h1 className="mt-6 font-serif text-4xl">Invoices</h1>
+          <p className="mt-2 text-sm text-[#85857a]">
+            Generate a PDF invoice for <strong>{project.client}</strong>.
+          </p>
+          <div className="mt-10 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-6">
+            <p className="text-sm text-[#85857a]">
+              Total due: <span className="font-serif text-xl">{formatMoney(project.outstanding)}</span>
+            </p>
+            <p className="mt-1 text-sm text-[#85857a]">
+              Line items: {lineItems.length} hours entry
+              {lineItems.length !== 1 && 's'}
+            </p>
+          </div>
+          <div className="mt-8">
+            <Button
+              onClick={handleGenerate}
+              className="w-full rounded-xl bg-[#bd765b] text-white"
+              disabled={generateInvoice.isPending}
+            >
+              Generate invoice
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
