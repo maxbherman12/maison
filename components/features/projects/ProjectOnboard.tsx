@@ -61,7 +61,7 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
 
   if (created && newProject) {
     return (
-      <div className="mx-auto max-w-2xl animate-in fade-in zoom-in duration-300">
+      <div className="mx-auto max-w-4xl animate-in fade-in zoom-in duration-300">
         <div className="flex items-center gap-2 mb-8">
           <button
             onClick={onBack}
@@ -85,7 +85,7 @@ export function ProjectOnboard({ onBack }: ProjectOnboardProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <div className="flex items-center gap-2 mb-8">
         <button
           onClick={onBack}

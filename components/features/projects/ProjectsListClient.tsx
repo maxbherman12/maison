@@ -30,23 +30,8 @@ export function ProjectsListClient() {
   }
 
   return (
-    <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-4xl font-serif tracking-tight">Your projects</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage clients, log hours, track furniture, and send invoices.
-          </p>
-        </div>
-        <button
-          onClick={() => setOnboarding(true)}
-          className="rounded-full bg-[#bd765b] px-6 py-3 text-white font-medium hover:bg-[#a9573d] transition-colors"
-        >
-          New project
-        </button>
-      </div>
-
+    <main className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 py-8">
       <ProjectList projects={data ?? []} />
-    </div>
+    </main>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, FileText, X } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/types';
@@ -60,17 +60,7 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-center gap-2 mb-8">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
-          aria-label="Back to project"
-        >
-          <ArrowLeft className="size-3.5" /> Back to {project.project}
-        </button>
-      </div>
-
+    <div className="mx-auto max-w-4xl">
       {generated && invoicePath ? (
         <div className="animate-in fade-in zoom-in duration-300">
           <div className="mt-8 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-6">

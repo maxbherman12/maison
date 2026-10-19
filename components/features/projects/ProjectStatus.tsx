@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Package, Timer, X } from 'lucide-react';
+import { Package, Timer, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/types';
@@ -42,17 +42,7 @@ export function ProjectStatus({ project, onBack }: ProjectStatusProps) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-center gap-2 mb-8">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
-          aria-label="Back to project"
-        >
-          <ArrowLeft className="size-3.5" /> Back to {project.project}
-        </button>
-      </div>
-
+    <div className="mx-auto max-w-4xl">
       <div className="mt-8 flex items-start justify-between gap-4">
         <div>
           <span className="text-xs uppercase tracking-[0.18em] text-[#99998e]">Project status</span>

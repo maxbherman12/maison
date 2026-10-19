@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Timer, Package, CreditCard, Check, X } from 'lucide-react';
+import { Timer, Package, CreditCard, Check, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/types';
@@ -56,17 +56,7 @@ export function ProjectLog({ project, onBack }: ProjectLogProps) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="flex items-center gap-2 mb-8">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
-          aria-label="Back to project"
-        >
-          <ArrowLeft className="size-3.5" /> Back to {project.project}
-        </button>
-      </div>
-
+    <div className="mx-auto max-w-4xl">
       <div className="flex items-center gap-2 text-xs text-[#99998e] mb-8">
         {[1, 2, 3].map((item) => (
           <span

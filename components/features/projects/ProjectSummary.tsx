@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  ArrowLeft,
   Pencil,
   Timer,
   Package,
@@ -41,13 +40,6 @@ export function ProjectSummary({
     <div className="mx-auto max-w-4xl">
       <div className="flex items-start justify-between gap-3 mb-6">
         <div className="min-w-0">
-          <button
-            onClick={() => {}}
-            className="text-sm text-[#bd765b] hover:underline"
-            aria-label="Go back to all projects"
-          >
-            <ArrowLeft className="inline size-3.5 mr-1" /> All projects
-          </button>
           <span className="text-[10px] uppercase tracking-[0.16em] text-[#99998e] block mt-1">
             {project.client}
           </span>
