@@ -2,9 +2,21 @@
 
 Interior-design project management app. Next.js 16, React 19, Tailwind CSS v4, shadcn/ui, pnpm. Tracks clients, billable hours, furniture purchases, and generates PDF invoices.
 
+## Feature workflow (required)
+
+Every feature follows this sequence, in order. Do not skip a step, and never commit, push, or merge feature work into `main` yourself.
+
+1. **Plan first.** Write a detailed plan before touching code: the problem, the proposed approach, at least one alternative considered and why it was rejected, and the files/modules affected. Optimize for clean code, extensibility, and simplicity — not the fastest patch.
+2. **Build in a worktree.** All implementation happens in a treehouse worktree on its own branch (see below), never in the main checkout.
+3. **Review collaboratively.** When the work is done, walk the user through the changes (`git diff main...HEAD`, `git status`) and iterate on their feedback. Fix issues in the worktree.
+4. **Wait for explicit approval.** Merging into `main` requires the user's explicit approval of *that* feature. Approval of a plan or of a review pass is not merge approval, and approval never carries over to another feature.
+5. **Land and clean up.** Only after approval: merge into `main`, then return the worktree (`treehouse return <path>`) and delete the branch (`git branch -d <branch>`). Confirm the pool with `treehouse status`.
+
+If you discover feature work already sitting on `main` or uncommitted in the main checkout, stop and ask before committing, merging, or discarding it.
+
 ## Worktrees (required)
 
-All feature work happens in a treehouse worktree
+All feature work happens in a treehouse worktree.
 - Detect: `git rev-parse --git-dir` vs `--git-common-dir` differ inside a worktree.
 - Main checkout: `treehouse get --lease --json`, then move into the printed `path` (add `-b <branch>`; default is detached HEAD). Fresh worktrees need `pnpm install` + a copy of `.env.local`.
 - Already in a worktree: stay there; acquire another only if instructed, and ask if unclear.
@@ -100,6 +112,7 @@ No test, lint, or format scripts exist.
 ## Version control
 
 - Git initialized. Remote: `origin` (github.com/maxbherman12/maison).
+- `main` is the integration branch. It only receives work through an approved feature branch — no direct commits, and no merging without the user's explicit approval (see Feature workflow).
 
 ## What to skip
 
