@@ -1,5 +1,5 @@
 import type { Invoice, GenerateInvoiceInput } from '../types';
-import type { InvoiceRepository } from '../repository/memory';
+import type { InvoiceRepository, ProjectRepository } from '../repository/memory';
 import { put } from '@vercel/blob';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
@@ -75,7 +75,8 @@ export class PdfInvoiceGenerator implements InvoiceGenerator {
 export class InvoiceService {
   constructor(
     private readonly invoices: InvoiceRepository,
-    private readonly generator: InvoiceGenerator
+    private readonly generator: InvoiceGenerator,
+    private readonly projects: ProjectRepository
   ) {}
 
   async listInvoices(projectId: string): Promise<Invoice[]> {
@@ -89,23 +90,36 @@ export class InvoiceService {
     if (!input.project.trim()) {
       throw new Error('Project name is required');
     }
-    if (input.total <= 0) {
-      throw new Error('Total must be greater than zero');
-    }
     if (!input.items.length) {
       throw new Error('Invoice must have at least one line item');
     }
 
-    const { pathname } = await this.generator.generate(input);
+    // The server is the source of truth for the total, so a client cannot
+    // inflate or deflate what the PDF says is due.
+    const total = input.items.reduce((sum, item) => sum + item.amount, 0);
+    if (total <= 0) {
+      throw new Error('Total must be greater than zero');
+    }
 
-    return this.invoices.create({
+    const { pathname } = await this.generator.generate({ ...input, total });
+
+    const invoice = await this.invoices.create({
       projectId: input.projectId,
       number: '', // set by repository
       createdAt: new Date().toISOString(),
-      total: input.total,
+      total,
       paid: false,
       pathname,
     } as Omit<Invoice, 'id'>);
+
+    // Tie the billed items to the invoice so they stop showing as outstanding.
+    await this.projects.markItemsInvoiced(
+      input.projectId,
+      invoice.id,
+      input.items.map((item) => ({ id: item.id, source: item.source }))
+    );
+
+    return invoice;
   }
 
   async markPaid(id: string): Promise<Invoice | null> {

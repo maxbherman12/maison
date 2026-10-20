@@ -13,7 +13,11 @@ const invoiceRepository = new PostgresInvoiceRepository();
 const invoiceGenerator = new PdfInvoiceGenerator();
 
 export const projectService = new ProjectService(projectRepository);
-export const invoiceService = new InvoiceService(invoiceRepository, invoiceGenerator);
+export const invoiceService = new InvoiceService(
+  invoiceRepository,
+  invoiceGenerator,
+  projectRepository
+);
 
 // Re-exported for direct access when needed (e.g. in API routes)
 export { projectRepository, invoiceRepository, invoiceGenerator };

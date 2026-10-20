@@ -1,11 +1,16 @@
 export type FurnitureStatus = 'Pending' | 'Ordered' | 'In transit' | 'Delivered';
 
+/** Which table a billable line item originates from. */
+export type BillableSource = 'hours' | 'furniture';
+
 export interface HourEntry {
   id: string;
   title: string;
   date: string;
   hours: number;
   amount: number;
+  /** Invoice this entry was billed on. `null` means it has not been invoiced yet. */
+  invoiceId: string | null;
 }
 
 export interface FurnitureItem {
@@ -18,6 +23,8 @@ export interface FurnitureItem {
   tags: string[];
   notes: string;
   status: FurnitureStatus;
+  /** Invoice this item was billed on. `null` means it has not been invoiced yet. */
+  invoiceId: string | null;
 }
 
 export interface Project {
@@ -68,12 +75,20 @@ export interface AddFurnitureInput {
   notes: string;
 }
 
+export interface InvoiceLineItem {
+  /** Id of the source hour entry or furniture item. */
+  id: string;
+  source: BillableSource;
+  title: string;
+  amount: number;
+}
+
 export interface GenerateInvoiceInput {
   projectId: string;
   client: string;
   project: string;
   total: number;
-  items: { title: string; amount: number }[];
+  items: InvoiceLineItem[];
 }
 
 export interface Money {
@@ -89,8 +104,16 @@ export function formatMoney(value: number, currency: string = 'USD'): string {
   }).format(value);
 }
 
+/**
+ * Total value still owed on a project: every hour entry and furniture item that
+ * has not been attached to an invoice yet.
+ */
 export function computeOutstanding(hours: HourEntry[], furniture: FurnitureItem[]): number {
-  const labor = hours.reduce((sum, entry) => sum + entry.amount, 0);
-  const purchases = furniture.reduce((sum, item) => sum + item.trade, 0);
+  const labor = hours
+    .filter((entry) => entry.invoiceId === null)
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  const purchases = furniture
+    .filter((item) => item.invoiceId === null)
+    .reduce((sum, item) => sum + item.trade, 0);
   return labor + purchases;
 }

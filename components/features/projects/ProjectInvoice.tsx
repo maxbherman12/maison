@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FileText, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { formatMoney } from '@/lib/types';
+import { buildInvoiceLineItems } from '@/lib/billing';
 import { useGenerateInvoice } from '@/lib/query/invoices';
 
 interface ProjectInvoiceProps {
@@ -23,17 +24,19 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
     },
   });
 
-  const lineItems = project.hours.map((entry) => ({
-    title: entry.title,
-    amount: entry.amount,
-  }));
+  // The invoice bills exactly what the pending items grid shows.
+  const lineItems = useMemo(() => buildInvoiceLineItems(project), [project]);
+  const total = useMemo(
+    () => lineItems.reduce((sum, item) => sum + item.amount, 0),
+    [lineItems]
+  );
 
   const handleGenerate = () => {
     generateInvoice.mutate({
       projectId: project.id,
       client: project.client,
       project: project.project,
-      total: project.outstanding,
+      total,
       items: lineItems,
     });
   };
@@ -99,20 +102,21 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
           </p>
           <div className="mt-10 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-6">
             <p className="text-sm text-[#85857a]">
-              Total due: <span className="font-serif text-xl">{formatMoney(project.outstanding)}</span>
+              Total due:{' '}
+              <span className="font-serif text-xl">{formatMoney(total)}</span>
             </p>
             <p className="mt-1 text-sm text-[#85857a]">
-              Line items: {lineItems.length} hours entry
-              {lineItems.length !== 1 && 's'}
+              Line items: {lineItems.length} pending{' '}
+              {lineItems.length === 1 ? 'item' : 'items'}
             </p>
           </div>
           <div className="mt-8">
             <Button
               onClick={handleGenerate}
               className="w-full rounded-xl bg-[#bd765b] text-white"
-              disabled={generateInvoice.isPending}
+              disabled={generateInvoice.isPending || lineItems.length === 0}
             >
-              Generate invoice
+              {lineItems.length === 0 ? 'Nothing to invoice' : 'Generate invoice'}
             </Button>
           </div>
         </>

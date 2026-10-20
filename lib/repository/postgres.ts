@@ -9,7 +9,7 @@ import type {
   FurnitureItem,
 } from '@/lib/types';
 import 'server-only';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   projects,
@@ -17,27 +17,9 @@ import {
   furnitureItems,
   invoices,
 } from '@/lib/db/schema';
+import type { BillableItemRef, ProjectRepository, InvoiceRepository } from './memory';
 
-export interface ProjectRepository {
-  list(): Promise<Project[]>;
-  get(id: string): Promise<Project | null>;
-  create(input: CreateProjectInput): Promise<Project>;
-  update(id: string, patch: Partial<Project>): Promise<Project | null>;
-  logHours(projectId: string, input: LogHoursInput): Promise<Project | null>;
-  addFurniture(projectId: string, input: AddFurnitureInput): Promise<Project | null>;
-  updateFurnitureStatus(
-    projectId: string,
-    furnitureId: string,
-    status: FurnitureStatus
-  ): Promise<Project | null>;
-  deleteFurniture(projectId: string, furnitureId: string): Promise<Project | null>;
-}
-
-export interface InvoiceRepository {
-  list(projectId: string): Promise<Invoice[]>;
-  create(invoice: Omit<Invoice, 'id'>): Promise<Invoice>;
-  markPaid(id: string): Promise<Invoice | null>;
-}
+export type { BillableItemRef, ProjectRepository, InvoiceRepository };
 
 export class PostgresProjectRepository implements ProjectRepository {
   private toProject(row: typeof projects.$inferSelect): Project {
@@ -74,6 +56,7 @@ export class PostgresProjectRepository implements ProjectRepository {
           date: h.date,
           hours: Number(h.hours),
           amount: Number(h.amount),
+          invoiceId: h.invoiceId,
         });
       }
     }
@@ -93,6 +76,7 @@ export class PostgresProjectRepository implements ProjectRepository {
           tags: f.tags ?? [],
           notes: f.notes ?? '',
           status: f.status as FurnitureStatus,
+          invoiceId: f.invoiceId,
         });
       }
     }
@@ -118,6 +102,7 @@ export class PostgresProjectRepository implements ProjectRepository {
       date: h.date,
       hours: Number(h.hours),
       amount: Number(h.amount),
+      invoiceId: h.invoiceId,
     }));
 
     const furnitureRows = await db.select().from(furnitureItems).where(eq(furnitureItems.projectId, id));
@@ -131,6 +116,7 @@ export class PostgresProjectRepository implements ProjectRepository {
       tags: f.tags ?? [],
       notes: f.notes ?? '',
       status: f.status as FurnitureStatus,
+      invoiceId: f.invoiceId,
     }));
 
     project.outstanding = this.computeOutstanding(project.hours, project.furniture);
@@ -235,9 +221,46 @@ export class PostgresProjectRepository implements ProjectRepository {
     return this.get(projectId);
   }
 
+  async markItemsInvoiced(
+    projectId: string,
+    invoiceId: string,
+    items: BillableItemRef[]
+  ): Promise<void> {
+    const hourIds = items.filter((i) => i.source === 'hours').map((i) => i.id);
+    const furnitureIds = items.filter((i) => i.source === 'furniture').map((i) => i.id);
+
+    if (hourIds.length) {
+      await db
+        .update(hourEntries)
+        .set({ invoiceId })
+        .where(
+          and(
+            inArray(hourEntries.id, hourIds),
+            eq(hourEntries.projectId, projectId)
+          )
+        );
+    }
+
+    if (furnitureIds.length) {
+      await db
+        .update(furnitureItems)
+        .set({ invoiceId })
+        .where(
+          and(
+            inArray(furnitureItems.id, furnitureIds),
+            eq(furnitureItems.projectId, projectId)
+          )
+        );
+    }
+  }
+
   private computeOutstanding(hours: HourEntry[], furniture: FurnitureItem[]): number {
-    const labor = hours.reduce((sum, entry) => sum + entry.amount, 0);
-    const purchases = furniture.reduce((sum, item) => sum + item.trade, 0);
+    const labor = hours
+      .filter((entry) => entry.invoiceId === null)
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const purchases = furniture
+      .filter((item) => item.invoiceId === null)
+      .reduce((sum, item) => sum + item.trade, 0);
     return labor + purchases;
   }
 }

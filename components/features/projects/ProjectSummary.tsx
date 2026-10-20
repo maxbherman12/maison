@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { formatMoney, computeOutstanding } from '@/lib/types';
+import { formatMoney } from '@/lib/types';
+import { ProjectItemsGrid } from './ProjectItemsGrid';
 
 interface ProjectSummaryProps {
   project: Project;
@@ -26,12 +27,6 @@ export function ProjectSummary({
 }: ProjectSummaryProps) {
   const [editing, setEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
-
-  const labor = project.hours.reduce((sum, entry) => sum + entry.amount, 0);
-  const purchases = project.furniture.reduce(
-    (sum, item) => sum + item.trade,
-    0
-  );
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -68,7 +63,7 @@ export function ProjectSummary({
               label="Furniture items"
               value={project.furniture.length}
             />
-            <StatCard label="Outstanding" value={formatMoney(project.outstanding)} />
+            <StatCard label="Uninvoiced" value={formatMoney(project.outstanding)} />
           </div>
 
           <div className="flex items-center justify-between gap-4 mb-6">
@@ -110,23 +105,7 @@ export function ProjectSummary({
           </div>
 
           <div className="mb-6">
-            <h2 className="mb-3 font-serif text-2xl">Financial summary</h2>
-            <div className="rounded-xl border border-[#deddd5] bg-[#fbfaf7] p-5 sm:p-8">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85857a]">Labor</p>
-                  <p className="mt-1 font-serif text-xl">{formatMoney(labor)}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85857a]">Furniture purchases</p>
-                  <p className="mt-1 font-serif text-xl">{formatMoney(purchases)}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.1em] text-[#85857a]">Total outstanding</p>
-                  <p className="mt-1 font-serif text-2xl text-[#292923]">{formatMoney(computeOutstanding(project.hours, project.furniture))}</p>
-                </div>
-              </div>
-            </div>
+            <ProjectItemsGrid project={project} />
           </div>
 
           {selectedItem && (

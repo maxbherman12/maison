@@ -5,10 +5,17 @@ import type {
   LogHoursInput,
   AddFurnitureInput,
   FurnitureStatus,
+  BillableSource,
   HourEntry,
   FurnitureItem,
 } from '../types';
 import { computeOutstanding } from '../types';
+
+/** Reference to a billable item that can be attached to an invoice. */
+export interface BillableItemRef {
+  id: string;
+  source: BillableSource;
+}
 
 export interface ProjectRepository {
   list(): Promise<Project[]>;
@@ -23,6 +30,12 @@ export interface ProjectRepository {
     status: FurnitureStatus
   ): Promise<Project | null>;
   deleteFurniture(projectId: string, furnitureId: string): Promise<Project | null>;
+  /** Attach billable items to an invoice so they stop counting as outstanding. */
+  markItemsInvoiced(
+    projectId: string,
+    invoiceId: string,
+    items: BillableItemRef[]
+  ): Promise<void>;
 }
 
 export interface InvoiceRepository {
@@ -89,6 +102,7 @@ export class MemoryProjectRepository implements ProjectRepository {
       date: input.date,
       hours: input.hours,
       amount: input.amount ?? input.hours * project.hourlyRate,
+      invoiceId: null,
     };
 
     const updated: Project = {
@@ -121,6 +135,7 @@ export class MemoryProjectRepository implements ProjectRepository {
       tags: input.tags,
       notes: input.notes,
       status: 'Pending',
+      invoiceId: null,
     };
 
     const updated: Project = {
@@ -173,6 +188,36 @@ export class MemoryProjectRepository implements ProjectRepository {
 
     this.projects.set(projectId, updated);
     return updated;
+  }
+
+  async markItemsInvoiced(
+    projectId: string,
+    invoiceId: string,
+    items: BillableItemRef[]
+  ): Promise<void> {
+    const project = this.projects.get(projectId);
+    if (!project) return;
+
+    const hourIds = new Set(
+      items.filter((i) => i.source === 'hours').map((i) => i.id)
+    );
+    const furnitureIds = new Set(
+      items.filter((i) => i.source === 'furniture').map((i) => i.id)
+    );
+
+    const hours = project.hours.map((entry) =>
+      hourIds.has(entry.id) ? { ...entry, invoiceId } : entry
+    );
+    const furniture = project.furniture.map((item) =>
+      furnitureIds.has(item.id) ? { ...item, invoiceId } : item
+    );
+
+    this.projects.set(projectId, {
+      ...project,
+      hours,
+      furniture,
+      outstanding: computeOutstanding(hours, furniture),
+    });
   }
 }
 

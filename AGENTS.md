@@ -19,6 +19,7 @@ lib/repository/   → data access (PostgresProjectRepository, PostgresInvoiceRep
 lib/db/           → Drizzle schema + Postgres client
 lib/types/        → domain types + shared helpers
 lib/validators/   → Zod schemas
+lib/billing.ts     → billable ("pending") rows shared by the grid and the invoice flow
 lib/query/        → React Query hooks (calls API routes via fetch)
 components/ui/    → shadcn base primitives
 components/features/ → feature-specific client components
@@ -70,6 +71,19 @@ No test, lint, or format scripts exist.
 - `/` — redirects to `/projects`
 - `/projects` — project list (`ProjectsListClient`), create project via `ProjectOnboard`
 - `/projects/[id]` — project detail (Server Component fetches, passes to `ProjectClient` → sub-views: `ProjectSummary`, `ProjectLog`, `ProjectStatus`, `ProjectInvoice`)
+
+## Billing model
+
+- Hours and furniture are billable items. `hour_entries.invoice_id` / `furniture_items.invoice_id` point at the invoice they were billed on; `null` means still pending.
+- `lib/billing.ts` derives the pending rows and the invoice line items from the same source, so the grid and the invoice always agree.
+- `outstanding` on a project is the total of its *uninvoiced* items.
+- The invoice total is recomputed server-side from the line items; the client-sent total is advisory.
+
+## Grids
+
+- AG Grid Community (`ag-grid-react`, `ag-grid-community`). `components/features/projects/ProjectItemsGrid.tsx` is the wrapper (toolbar + data), `ProjectItemsGridInner.tsx` holds the grid itself and is loaded client-side only via `next/dynamic`.
+- Always set `cellDataType` on columns. AG Grid infers it from the first row's value, so a column starting with a date renders later non-date values as blank.
+- The AG Grid cell is `display: block` with a tall line-height, so cell renderers should use `absolute inset-0 flex items-center` to centre themselves.
 
 ## Styling
 

@@ -8,6 +8,13 @@
       "when": 1792377386858,
       "tag": "0000_optimal_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792464055868,
+      "tag": "0001_graceful_blue_shield",
+      "breakpoints": true
     }
   ]
 }

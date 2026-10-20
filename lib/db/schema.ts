@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, real, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, timestamp, real, jsonb } from 'drizzle-orm/pg-core';
 
 export const projects = pgTable('projects', {
   id: text('id').primaryKey(),
@@ -8,8 +8,18 @@ export const projects = pgTable('projects', {
   hourlyRate: real('hourly_rate').notNull(),
   color: text('color').notNull().default('sage'),
   initials: text('initials').notNull(),
-  outstanding: integer('outstanding').notNull().default(0),
+  outstanding: real('outstanding').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const invoices = pgTable('invoices', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull(),
+  number: text('number').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  total: real('total').notNull(),
+  paid: boolean('paid').notNull().default(false),
+  pathname: text('pathname'),
 });
 
 export const hourEntries = pgTable('hour_entries', {
@@ -19,6 +29,7 @@ export const hourEntries = pgTable('hour_entries', {
   date: text('date').notNull(),
   hours: real('hours').notNull(),
   amount: real('amount').notNull(),
+  invoiceId: text('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -33,15 +44,6 @@ export const furnitureItems = pgTable('furniture_items', {
   tags: jsonb('tags').$type<string[]>().notNull().default([]),
   notes: text('notes'),
   status: text('status', { enum: ['Pending', 'Ordered', 'In transit', 'Delivered'] }).notNull().default('Pending'),
+  invoiceId: text('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-});
-
-export const invoices = pgTable('invoices', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id').notNull(),
-  number: text('number').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  total: integer('total').notNull(),
-  paid: boolean('paid').notNull().default(false),
-  pathname: text('pathname'),
 });

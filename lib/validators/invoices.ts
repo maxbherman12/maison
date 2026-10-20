@@ -4,10 +4,13 @@ export const GenerateInvoiceSchema = z.object({
   projectId: z.string().min(1, 'Project is required'),
   client: z.string().min(1, 'Client name is required'),
   project: z.string().min(1, 'Project name is required'),
-  total: z.number().positive('Total must be greater than zero'),
+  // Advisory only — the service recomputes the total from the line items.
+  total: z.number().nonnegative('Total must be non-negative'),
   items: z
     .array(
       z.object({
+        id: z.string().min(1, 'Line item id is required'),
+        source: z.enum(['hours', 'furniture']),
         title: z.string().min(1, 'Line item title is required'),
         amount: z.number().nonnegative('Amount must be non-negative'),
       })
