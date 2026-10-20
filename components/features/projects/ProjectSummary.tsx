@@ -8,6 +8,7 @@ import {
   FileText,
   Truck,
   Plus,
+  Columns3,
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,7 @@ export function ProjectSummary({
             <StatCard label="Uninvoiced" value={formatMoney(project.outstanding)} />
           </div>
 
-          <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex -space-x-2">
               {project.furniture.slice(0, 5).map((item) => (
                 <button
@@ -89,7 +90,7 @@ export function ProjectSummary({
                 </button>
               )}
             </div>
-            <div className="ml-auto flex gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:w-[360px]">
               <ActionButton
                 icon={<Plus className="size-5" />}
                 title="Log"
@@ -97,8 +98,13 @@ export function ProjectSummary({
                 variant="primary"
               />
               <ActionButton
+                icon={<Columns3 className="size-5" />}
+                title="Board"
+                href={`/projects/${project.id}/board`}
+              />
+              <ActionButton
                 icon={<FileText className="size-5" />}
-                title="View invoice"
+                title="Invoice"
                 onClick={onInvoice}
               />
             </div>
@@ -150,7 +156,7 @@ function ActionButton({
   onClick?: () => void;
   variant?: 'default' | 'primary';
 }) {
-  const className = `flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm transition-colors ${
+  const className = `flex h-12 items-center justify-center gap-2 rounded-xl border px-2 text-sm transition-colors sm:h-11 sm:flex-1 sm:px-3 ${
     variant === 'primary'
       ? 'border-[#bd765b] bg-[#bd765b] text-white hover:bg-[#a9573d]'
       : 'border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:border-[#bd765b] hover:bg-[#f1e6df]'
