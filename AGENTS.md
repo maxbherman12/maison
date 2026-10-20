@@ -2,6 +2,14 @@
 
 Interior-design project management app. Next.js 16, React 19, Tailwind CSS v4, shadcn/ui, pnpm. Tracks clients, billable hours, furniture purchases, and generates PDF invoices.
 
+## Worktrees (required)
+
+All feature work happens in a treehouse worktree
+- Detect: `git rev-parse --git-dir` vs `--git-common-dir` differ inside a worktree.
+- Main checkout: `treehouse get --lease --json`, then move into the printed `path` (add `-b <branch>`; default is detached HEAD). Fresh worktrees need `pnpm install` + a copy of `.env.local`.
+- Already in a worktree: stay there; acquire another only if instructed, and ask if unclear.
+- Done: `treehouse return <path>`. Pool: `treehouse status`; protect a slot: `treehouse lease <name>`.
+
 ## Architecture (layered)
 
 ```
