@@ -10,17 +10,21 @@ import type { FieldError } from 'react-hook-form';
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   date: z.string().min(1, 'Date is required'),
-  amount: z.number().positive('Amount must be greater than zero'),
+  amount: z
+    .number({ error: 'Enter a valid amount' })
+    .positive('Amount must be greater than zero'),
 });
 
 interface CustomChargeFormProps {
   project: Project;
+  isSaving?: boolean;
   onBack: () => void;
   onNext: (data: { title: string; amount: number; date: string }) => void;
 }
 
 export function CustomChargeForm({
   project,
+  isSaving = false,
   onBack,
   onNext,
 }: CustomChargeFormProps) {
@@ -39,7 +43,10 @@ export function CustomChargeForm({
       <p className="mt-2 text-sm text-[#85857a]">
         Add a one-time expense to <strong>{project.project}</strong>
       </p>
-      <form onSubmit={form.handleSubmit((data) => onNext(data))} className="mt-10 space-y-4">
+      <form
+        onSubmit={form.handleSubmit((data) => onNext(data))}
+        className="mt-10 space-y-4"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             label="Title"
@@ -56,22 +63,24 @@ export function CustomChargeForm({
         <FormField
           label="Amount"
           type="number"
+          step="0.01"
           prefix="$"
-          {...form.register('amount')}
+          {...form.register('amount', { valueAsNumber: true })}
           error={form.formState.errors.amount}
         />
+        <div className="mt-6 flex items-center justify-between">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[#bd765b] text-white"
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save charge'}
+          </Button>
+        </div>
       </form>
-      <div className="mt-10 flex items-center justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button
-          onClick={form.handleSubmit(() => onNext(form.getValues()))}
-          className="bg-[#bd765b] text-white"
-        >
-          Save charge
-        </Button>
-      </div>
     </div>
   );
 }

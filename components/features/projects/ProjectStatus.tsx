@@ -105,7 +105,7 @@ export function ProjectStatus({ project, onBack }: ProjectStatusProps) {
                 <span className="min-w-0">
                   <strong className="block truncate text-sm">{entry.title}</strong>
                   <span className="block text-xs text-[#85857a]">
-                    {entry.date} · {entry.hours} hrs
+                    {entry.date} · {entry.hours > 0 ? `${entry.hours} hrs` : 'Flat charge'}
                   </span>
                 </span>
               </span>

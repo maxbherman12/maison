@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import type { Project } from '@/lib/types';
-import { Button } from '@/components/ui/button';
 import { ProjectSummary } from './ProjectSummary';
-import { ProjectLog } from './ProjectLog';
 import { ProjectStatus } from './ProjectStatus';
 import { ProjectInvoice } from './ProjectInvoice';
 import { ProjectOnboard } from './ProjectOnboard';
 
-type View = 'summary' | 'log' | 'status' | 'invoice';
+type View = 'summary' | 'status' | 'invoice';
 
 interface ProjectDetailProps {
   project: Project;
@@ -23,12 +21,10 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       {view === 'summary' && (
         <ProjectSummary
           project={project}
-          onLog={() => setView('log')}
           onStatus={() => setView('status')}
           onInvoice={() => setView('invoice')}
         />
       )}
-      {view === 'log' && <ProjectLog project={project} onBack={() => setView('summary')} />}
       {view === 'status' && (
         <ProjectStatus project={project} onBack={() => setView('summary')} />
       )}

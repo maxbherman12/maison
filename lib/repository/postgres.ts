@@ -179,7 +179,7 @@ export class PostgresProjectRepository implements ProjectRepository {
     if (!project) return null;
 
     const entryId = crypto.randomUUID();
-    const amount = input.hours * project.hourlyRate;
+    const amount = input.amount ?? input.hours * project.hourlyRate;
 
     await db.insert(hourEntries).values({
       id: entryId,

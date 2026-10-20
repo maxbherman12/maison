@@ -10,17 +10,21 @@ import type { FieldError } from 'react-hook-form';
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   date: z.string().min(1, 'Date is required'),
-  hours: z.number().positive('Hours must be greater than zero'),
+  hours: z
+    .number({ error: 'Enter a valid number of hours' })
+    .positive('Hours must be greater than zero'),
 });
 
 interface LogHoursFormProps {
   project: Project;
+  isSaving?: boolean;
   onBack: () => void;
   onNext: (data: { title: string; hours: number; date: string }) => void;
 }
 
 export function LogHoursForm({
   project,
+  isSaving = false,
   onBack,
   onNext,
 }: LogHoursFormProps) {
@@ -41,7 +45,10 @@ export function LogHoursForm({
       <p className="mt-2 text-sm text-[#85857a]">
         Track billable time for <strong>{project.project}</strong>
       </p>
-      <form onSubmit={form.handleSubmit((data) => onNext(data))} className="mt-10 space-y-4">
+      <form
+        onSubmit={form.handleSubmit((data) => onNext(data))}
+        className="mt-10 space-y-4"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             label="Title"
@@ -59,26 +66,34 @@ export function LogHoursForm({
           label="Hours"
           type="number"
           step="0.5"
-          {...form.register('hours')}
+          {...form.register('hours', { valueAsNumber: true })}
           error={form.formState.errors.hours}
         />
+        <div className="rounded-xl border border-[#deddd5] bg-[#fbfaf7] p-5">
+          <p className="text-sm text-[#85857a]">
+            Estimated amount:{' '}
+            <span className="font-serif text-xl">
+              {amount.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                maximumFractionDigits: 0,
+              })}
+            </span>
+          </p>
+        </div>
+        <div className="mt-6 flex items-center justify-between">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[#bd765b] text-white"
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save hours'}
+          </Button>
+        </div>
       </form>
-      <div className="mt-6 rounded-xl border border-[#deddd5] bg-[#fbfaf7] p-5">
-        <p className="text-sm text-[#85857a]">
-          Estimated amount: <span className="font-serif text-xl">{amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}</span>
-        </p>
-      </div>
-      <div className="mt-10 flex items-center justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button
-          onClick={form.handleSubmit(() => onNext(form.getValues()))}
-          className="bg-[#bd765b] text-white"
-        >
-          Save hours
-        </Button>
-      </div>
     </div>
   );
 }

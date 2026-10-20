@@ -31,12 +31,14 @@ const schema = z.object({
 
 interface AddFurnitureFormProps {
   project: Project;
+  isSaving?: boolean;
   onBack: () => void;
   onNext: (data: AddFurnitureInput) => void;
 }
 
 export function AddFurnitureForm({
   project,
+  isSaving = false,
   onBack,
   onNext,
 }: AddFurnitureFormProps) {
@@ -112,15 +114,19 @@ export function AddFurnitureForm({
           error={form.formState.errors.tags}
         />
         <FormField label="Notes" {...form.register('notes')} error={form.formState.errors.notes} />
+        <div className="mt-6 flex items-center justify-between">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[#bd765b] text-white"
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save furniture'}
+          </Button>
+        </div>
       </form>
-      <div className="mt-10 flex items-center justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button type="submit" className="bg-[#bd765b] text-white">
-          Save furniture
-        </Button>
-      </div>
     </div>
   );
 }

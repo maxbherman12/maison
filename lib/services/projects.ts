@@ -40,7 +40,8 @@ export class ProjectService {
     if (!input.title.trim()) {
       throw new Error('Log title is required');
     }
-    if (input.hours <= 0) {
+    const hasAmount = typeof input.amount === 'number' && input.amount > 0;
+    if (input.hours <= 0 && !hasAmount) {
       throw new Error('Hours must be greater than zero');
     }
     return this.projects.logHours(projectId, input);

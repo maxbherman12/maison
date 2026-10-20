@@ -88,7 +88,7 @@ export class MemoryProjectRepository implements ProjectRepository {
       title: input.title || 'Design work',
       date: input.date,
       hours: input.hours,
-      amount: input.hours * project.hourlyRate,
+      amount: input.amount ?? input.hours * project.hourlyRate,
     };
 
     const updated: Project = {

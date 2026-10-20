@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Pencil,
-  Timer,
   Package,
-  CreditCard,
   FileText,
   Truck,
   Plus,
@@ -16,14 +15,12 @@ import { formatMoney, computeOutstanding } from '@/lib/types';
 
 interface ProjectSummaryProps {
   project: Project;
-  onLog: () => void;
   onStatus: () => void;
   onInvoice: () => void;
 }
 
 export function ProjectSummary({
   project,
-  onLog,
   onStatus,
   onInvoice,
 }: ProjectSummaryProps) {
@@ -99,21 +96,10 @@ export function ProjectSummary({
             </div>
             <div className="ml-auto flex gap-2">
               <ActionButton
-                icon={<Timer className="size-5" />}
-                title="Log hours"
-                onClick={onLog}
-              />
-              <ActionButton
-                icon={<Package className="size-5" />}
-                title="Log furniture"
-                onClick={() => {
-                  // handled by log view
-                }}
-              />
-              <ActionButton
-                icon={<CreditCard className="size-5" />}
-                title="Custom charge"
-                onClick={() => {}}
+                icon={<Plus className="size-5" />}
+                title="Log"
+                href={`/projects/${project.id}/log`}
+                variant="primary"
               />
               <ActionButton
                 icon={<FileText className="size-5" />}
@@ -175,21 +161,45 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function ActionButton({
   icon,
   title,
+  href,
   onClick,
+  variant = 'default',
 }: {
   icon: React.ReactNode;
   title: string;
-  onClick: () => void;
+  href?: string;
+  onClick?: () => void;
+  variant?: 'default' | 'primary';
 }) {
+  const className = `flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm transition-colors ${
+    variant === 'primary'
+      ? 'border-[#bd765b] bg-[#bd765b] text-white hover:bg-[#a9573d]'
+      : 'border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:border-[#bd765b] hover:bg-[#f1e6df]'
+  }`;
+
+  const content = (
+    <>
+      <span className="flex size-8 items-center justify-center">{icon}</span>
+      <span className="text-xs font-medium">{title}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className} title={title} aria-label={title}>
+        {content}
+      </Link>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#deddd5] bg-[#fbfaf7] text-sm text-[#bd765b] transition-colors hover:border-[#bd765b] hover:bg-[#f1e6df]"
+      className={className}
     >
-      <span className="flex size-8 items-center justify-center">{icon}</span>
-      <span className="text-xs font-medium">{title}</span>
+      {content}
     </button>
   );
 }

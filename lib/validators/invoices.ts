@@ -29,7 +29,8 @@ export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 export const LogHoursSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   date: z.string().min(1, 'Date is required'),
-  hours: z.number().positive('Hours must be greater than zero'),
+  hours: z.number().nonnegative('Hours cannot be negative'),
+  amount: z.number().nonnegative('Amount must be non-negative').optional(),
 });
 
 export type LogHoursInput = z.infer<typeof LogHoursSchema>;

@@ -54,6 +54,8 @@ export interface LogHoursInput {
   title: string;
   date: string;
   hours: number;
+  /** Explicit dollar amount. Overrides hours * hourlyRate when provided. */
+  amount?: number;
 }
 
 export interface AddFurnitureInput {
