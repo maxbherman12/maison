@@ -6,7 +6,7 @@ Interior-design project management app. Next.js 16, React 19, Tailwind CSS v4, s
 
 Every feature follows this sequence, in order. Do not skip a step, and never commit, push, or merge feature work into `main` yourself.
 
-1. **Plan first.** Write a detailed plan before touching code: the problem, the proposed approach, at least one alternative considered and why it was rejected, and the files/modules affected. Optimize for clean code, extensibility, and simplicity — not the fastest patch.
+1. **Plan first.** Write a detailed plan before touching code: the problem, the proposed approach, at least one alternative considered and why it was rejected, and the files/modules affected. Optimize for clean code, extensibility, and simplicity — not the fastest patch. Store it in `.agents/plans/YYYY-MM-DD-<slug>.md` (see `.agents/plans/README.md`).
 2. **Build in a worktree.** All implementation happens in a treehouse worktree on its own branch (see below), never in the main checkout.
 3. **Review collaboratively.** When the work is done, walk the user through the changes (`git diff main...HEAD`, `git status`) and iterate on their feedback. Fix issues in the worktree.
 4. **Wait for explicit approval.** Merging into `main` requires the user's explicit approval of *that* feature. Approval of a plan or of a review pass is not merge approval, and approval never carries over to another feature.
