@@ -123,7 +123,7 @@ export function ProjectStatus({ project, onBack }: ProjectStatusProps) {
       {selectedItem && (
         <div className="fixed inset-0 z-10 flex items-end justify-center bg-[#292923]/25 p-4 sm:items-center">
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-[#fffefa] p-6"
+            className="max-h-sheet w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-[#fffefa] p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <FurnitureModal
@@ -139,7 +139,7 @@ export function ProjectStatus({ project, onBack }: ProjectStatusProps) {
       {editingItem && (
         <div className="fixed inset-0 z-10 flex items-end justify-center bg-[#292923]/25 p-4 sm:items-center">
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-[#fffefa] p-6"
+            className="max-h-sheet w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-[#fffefa] p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <FurnitureEditModal

@@ -4,6 +4,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Sheets and dialogs: fall back to vh, then use the dynamic viewport when the
+   browser supports it so the mobile keyboard cannot hide the focused field. */
+.max-h-sheet {
+  max-height: calc(100vh - 2rem);
+}
+
+@supports (height: 100dvh) {
+  .max-h-sheet {
+    max-height: calc(100dvh - 2rem);
+  }
+}
+
 @theme inline {
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -156,6 +168,11 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    height: 100%;
+    overscroll-behavior: none;
   }
   body {
     @apply bg-background text-foreground;

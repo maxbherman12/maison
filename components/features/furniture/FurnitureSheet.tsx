@@ -53,7 +53,7 @@ export function FurnitureSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="furniture-sheet-title"
-        className="max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-[#fffefa] p-6 sm:rounded-3xl"
+        className="max-h-sheet w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl bg-[#fffefa] p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))] sm:rounded-3xl"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

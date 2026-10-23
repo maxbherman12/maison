@@ -29,9 +29,5 @@ export function ProjectsListClient() {
     return <ProjectOnboard onBack={() => setOnboarding(false)} />;
   }
 
-  return (
-    <main className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 py-8">
-      <ProjectList projects={data ?? []} />
-    </main>
-  );
+  return <ProjectList projects={data ?? []} />;
 }
