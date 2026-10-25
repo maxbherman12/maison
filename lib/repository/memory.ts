@@ -40,6 +40,7 @@ export interface ProjectRepository {
 
 export interface InvoiceRepository {
   list(projectId: string): Promise<Invoice[]>;
+  get(id: string): Promise<Invoice | null>;
   create(invoice: Omit<Invoice, 'id'>): Promise<Invoice>;
   markPaid(id: string): Promise<Invoice | null>;
 }
@@ -229,6 +230,10 @@ export class MemoryInvoiceRepository implements InvoiceRepository {
     return Array.from(this.invoices.values())
       .filter((inv) => inv.projectId === projectId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async get(id: string): Promise<Invoice | null> {
+    return this.invoices.get(id) ?? null;
   }
 
   async create(invoice: Omit<Invoice, 'id'>): Promise<Invoice> {

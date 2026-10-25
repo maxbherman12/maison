@@ -1,8 +1,8 @@
 import 'server-only';
 import { PostgresProjectRepository, PostgresInvoiceRepository } from '@/lib/repository/postgres';
 import { ProjectService } from '@/lib/services/projects';
-import { InvoiceService } from '@/lib/services/invoices';
-import { PdfInvoiceGenerator } from '@/lib/services/invoices';
+import { InvoiceService, PdfInvoiceRenderer } from '@/lib/services/invoices';
+import { createBlobStore } from '@/lib/storage';
 
 // Singleton container for dependency injection.
 // Postgres repositories are used in all environments; swap implementations here
@@ -10,14 +10,16 @@ import { PdfInvoiceGenerator } from '@/lib/services/invoices';
 // or UI code.
 const projectRepository = new PostgresProjectRepository();
 const invoiceRepository = new PostgresInvoiceRepository();
-const invoiceGenerator = new PdfInvoiceGenerator();
+const invoiceRenderer = new PdfInvoiceRenderer();
+const blobStore = createBlobStore();
 
 export const projectService = new ProjectService(projectRepository);
 export const invoiceService = new InvoiceService(
   invoiceRepository,
-  invoiceGenerator,
-  projectRepository
+  invoiceRenderer,
+  projectRepository,
+  blobStore
 );
 
 // Re-exported for direct access when needed (e.g. in API routes)
-export { projectRepository, invoiceRepository, invoiceGenerator };
+export { projectRepository, invoiceRepository, invoiceRenderer, blobStore };

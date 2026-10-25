@@ -28,6 +28,7 @@ All feature work happens in a treehouse worktree.
 app/              → Next.js App Router (pages + API routes)
 lib/services/     → business logic (ProjectService, InvoiceService)
 lib/repository/   → data access (PostgresProjectRepository, PostgresInvoiceRepository)
+lib/storage/      → blob storage port + local/Vercel drivers
 lib/db/           → Drizzle schema + Postgres client
 lib/types/        → domain types + shared helpers
 lib/validators/   → Zod schemas
@@ -60,15 +61,24 @@ No test, lint, or format scripts exist.
 - `lib/repository/postgres.ts` — `PostgresProjectRepository`, `PostgresInvoiceRepository` implement the repository interfaces using Drizzle + pg.
 - `lib/services/container.ts` — DI container. Singleton services wired to Postgres repos. Import `projectService` / `invoiceService` from here (server-only).
 - `lib/services/projects.ts` — `ProjectService`: CRUD, log hours, add/update/delete furniture.
-- `lib/services/invoices.ts` — `InvoiceService`: generates PDF via `pdf-lib`, uploads to `@vercel/blob`, persists invoice record.
+- `lib/services/invoices.ts` — `InvoiceService`: renders a PDF via `pdf-lib`, stores it through the `BlobStore`, persists the invoice record.
 - `lib/validators/invoices.ts` — Zod schemas for invoice generation, project creation, hour/furniture logs.
-- API routes: `app/api/projects/*` and `app/api/invoices/route.ts` — validate with Zod, delegate to services.
+- API routes: `app/api/projects/*`, `app/api/invoices/route.ts`, and `app/api/invoices/[invoiceId]/pdf/route.ts` — validate with Zod, delegate to services.
+
+## Blob storage
+
+- `lib/storage/blob-store.ts` defines the `BlobStore` port (`put`, `get`, `delete`). Services depend on this, not on a vendor SDK.
+- `lib/storage/local.ts` writes to `.data/blobs/` (override with `LOCAL_BLOB_DIR`). Used when `BLOB_DRIVER=local`.
+- `lib/storage/vercel.ts` uses private `@vercel/blob` blobs. Used when `BLOB_DRIVER=vercel` or unset.
+- `lib/storage/index.ts` selects the driver; unknown values throw at startup.
+- Invoice PDFs are served by `GET /api/invoices/[invoiceId]/pdf`. Never expose a blob pathname or URL to the browser.
+- `.data/` is gitignored.
 
 ## Local database setup
 
 1. PostgreSQL must be running (Homebrew `postgresql@16` or Docker).
 2. Create the database: `createdb maison_dev`
-3. Copy `.env.local` and set `DATABASE_URL=postgresql://<user>@localhost:5432/maison_dev`
+3. Copy `.env.local` and set `DATABASE_URL=postgresql://<user>@localhost:5432/maison_dev` plus `BLOB_DRIVER=local`.
 4. Run migrations: `pnpm db:generate` then `pnpm db:migrate`
 5. Start dev server: `pnpm dev`
 
@@ -106,8 +116,8 @@ No test, lint, or format scripts exist.
 
 ## Environment
 
-- `.env.local` required for `DATABASE_URL`. `@vercel/blob` requires `BLOB_READ_WRITE_TOKEN` at runtime (invoice uploads fail without it). Do not commit real tokens.
-- `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.env*.local`, v0 internals, `tsconfig.tsbuildinfo`.
+- `.env.local` requires `DATABASE_URL`. Set `BLOB_DRIVER=local` for filesystem-backed invoice PDFs (stored in `.data/blobs/`). In production leave it unset (or set `vercel`); Vercel Blob needs `BLOB_READ_WRITE_TOKEN` or OIDC and private blob access. Do not commit real tokens.
+- `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, v0 internals, `tsconfig.tsbuildinfo`.
 
 ## Version control
 

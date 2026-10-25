@@ -1,14 +1,15 @@
+import { basename } from 'node:path';
 import type { Invoice, GenerateInvoiceInput } from '../types';
 import type { InvoiceRepository, ProjectRepository } from '../repository/memory';
-import { put } from '@vercel/blob';
+import type { BlobStore } from '../storage/blob-store';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
-interface InvoiceGenerator {
-  generate(input: GenerateInvoiceInput): Promise<{ pathname: string; bytes: Buffer }>;
+interface InvoicePdfRenderer {
+  render(input: GenerateInvoiceInput): Promise<Buffer>;
 }
 
-export class PdfInvoiceGenerator implements InvoiceGenerator {
-  async generate(input: GenerateInvoiceInput): Promise<{ pathname: string; bytes: Buffer }> {
+export class PdfInvoiceRenderer implements InvoicePdfRenderer {
+  async render(input: GenerateInvoiceInput): Promise<Buffer> {
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([612, 792]);
     const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -59,24 +60,17 @@ export class PdfInvoiceGenerator implements InvoiceGenerator {
     });
 
     const bytes = await pdf.save();
-    const buffer = Buffer.from(bytes);
 
-    const slug = input.project.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    const blob = await put(`invoices/${Date.now()}-${slug}.pdf`, buffer, {
-      access: 'private',
-      contentType: 'application/pdf',
-      addRandomSuffix: false,
-    });
-
-    return { pathname: blob.pathname, bytes: buffer };
+    return Buffer.from(bytes);
   }
 }
 
 export class InvoiceService {
   constructor(
     private readonly invoices: InvoiceRepository,
-    private readonly generator: InvoiceGenerator,
-    private readonly projects: ProjectRepository
+    private readonly renderer: InvoicePdfRenderer,
+    private readonly projects: ProjectRepository,
+    private readonly blobs: BlobStore
   ) {}
 
   async listInvoices(projectId: string): Promise<Invoice[]> {
@@ -101,7 +95,14 @@ export class InvoiceService {
       throw new Error('Total must be greater than zero');
     }
 
-    const { pathname } = await this.generator.generate({ ...input, total });
+    const bytes = await this.renderer.render({ ...input, total });
+
+    const slug = input.project.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const { pathname } = await this.blobs.put(
+      `invoices/${Date.now()}-${slug}.pdf`,
+      bytes,
+      { contentType: 'application/pdf' }
+    );
 
     const invoice = await this.invoices.create({
       projectId: input.projectId,
@@ -120,6 +121,23 @@ export class InvoiceService {
     );
 
     return invoice;
+  }
+
+  async getInvoicePdf(id: string): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    contentType: string;
+    filename: string;
+  } | null> {
+    const invoice = await this.invoices.get(id);
+    if (!invoice?.pathname) return null;
+
+    const blob = await this.blobs.get(invoice.pathname);
+    if (!blob) return null;
+
+    return {
+      ...blob,
+      filename: basename(invoice.pathname),
+    };
   }
 
   async markPaid(id: string): Promise<Invoice | null> {
