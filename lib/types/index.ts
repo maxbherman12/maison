@@ -3,6 +3,12 @@ export type FurnitureStatus = 'Pending' | 'Ordered' | 'In transit' | 'Delivered'
 /** Which table a billable line item originates from. */
 export type BillableSource = 'hours' | 'furniture';
 
+/** Reference to a billable item that can be attached to an invoice. */
+export interface BillableItemRef {
+  id: string;
+  source: BillableSource;
+}
+
 export interface HourEntry {
   id: string;
   title: string;
@@ -40,6 +46,8 @@ export interface Project {
   hours: HourEntry[];
 }
 
+export type InvoiceStatus = 'Issued' | 'Sent' | 'Paid' | 'Overdue';
+
 export interface Invoice {
   id: string;
   projectId: string;
@@ -48,6 +56,24 @@ export interface Invoice {
   total: number;
   paid: boolean;
   pathname?: string;
+  sentAt?: string;
+  dueAt?: string;
+  paidAt?: string;
+  /** Persisted line items. Only present on invoice detail responses. */
+  lineItems?: InvoiceLineItemSnapshot[];
+  /** Number of persisted line items. Only present on invoice list responses. */
+  lineItemCount?: number;
+}
+
+/** What was billed, captured when the invoice was generated. */
+export interface InvoiceLineItemSnapshot {
+  id: string;
+  invoiceId: string;
+  source: BillableSource;
+  sourceId: string;
+  title: string;
+  amount: number;
+  createdAt: string;
 }
 
 export interface CreateProjectInput {
@@ -85,10 +111,27 @@ export interface InvoiceLineItem {
 
 export interface GenerateInvoiceInput {
   projectId: string;
-  client: string;
-  project: string;
-  total: number;
-  items: InvoiceLineItem[];
+  /** Only source references are accepted; the server derives titles and amounts. */
+  items: BillableItemRef[];
+}
+
+export interface UpdateHourEntryInput {
+  title?: string;
+  date?: string;
+  hours?: number;
+  /** When omitted, the existing amount is kept. */
+  amount?: number;
+}
+
+export interface UpdateFurnitureInput {
+  name?: string;
+  vendor?: string;
+  retail?: number;
+  trade?: number;
+  link?: string;
+  tags?: string[];
+  notes?: string;
+  status?: FurnitureStatus;
 }
 
 export interface Money {

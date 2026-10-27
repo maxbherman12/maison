@@ -34,10 +34,11 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
   const handleGenerate = () => {
     generateInvoice.mutate({
       projectId: project.id,
-      client: project.client,
-      project: project.project,
-      total,
-      items: lineItems,
+      // The server derives titles, amounts, and the total from these refs.
+      items: lineItems.map((item) => ({
+        id: item.id,
+        source: item.source,
+      })),
     });
   };
 

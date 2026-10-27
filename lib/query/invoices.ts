@@ -1,11 +1,20 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+import type { Invoice, GenerateInvoiceInput } from '@/lib/types';
 import { projectKeys } from '@/lib/query/projects';
 
 export const invoiceKeys = {
   all: ['invoices'] as const,
-  list: (projectId: string) => [...invoiceKeys.all, projectId] as const,
+  lists: () => [...invoiceKeys.all, 'list'] as const,
+  list: (projectId: string) => [...invoiceKeys.lists(), projectId] as const,
+  details: () => [...invoiceKeys.all, 'detail'] as const,
+  detail: (invoiceId: string) => [...invoiceKeys.details(), invoiceId] as const,
 };
 
 async function request(path: string, options: RequestInit = {}) {
@@ -20,37 +29,81 @@ async function request(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
+function invalidateInvoice(
+  queryClient: QueryClient,
+  invoice: Pick<Invoice, 'id' | 'projectId'>
+) {
+  queryClient.invalidateQueries({ queryKey: invoiceKeys.list(invoice.projectId) });
+  queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(invoice.id) });
+  // Billing items changes the pending grid and the project list outstanding
+  // figures, so refresh both.
+  queryClient.invalidateQueries({
+    queryKey: projectKeys.detail(invoice.projectId),
+  });
+  queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+}
+
+export function useInvoices(projectId: string) {
+  return useQuery({
+    queryKey: invoiceKeys.list(projectId),
+    queryFn: async () =>
+      (await request(
+        `/api/invoices?projectId=${encodeURIComponent(projectId)}`
+      )) as Invoice[],
+    enabled: !!projectId,
+  });
+}
+
+export function useInvoice(invoiceId: string) {
+  return useQuery({
+    queryKey: invoiceKeys.detail(invoiceId),
+    queryFn: async () =>
+      (await request(`/api/invoices/${invoiceId}`)) as Invoice,
+    enabled: !!invoiceId,
+  });
+}
+
 export function useGenerateInvoice(options?: {
-  onSuccess?: (data: { id: string }) => void;
+  onSuccess?: (invoice: Invoice) => void;
 }) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      projectId: string;
-      client: string;
-      project: string;
-      total: number;
-      items: {
-        id: string;
-        source: 'hours' | 'furniture';
-        title: string;
-        amount: number;
-      }[];
-    }) =>
+    mutationFn: (input: GenerateInvoiceInput) =>
       request('/api/invoices', {
         method: 'POST',
         body: JSON.stringify(input),
-      }),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: invoiceKeys.list(variables.projectId),
-      });
-      // Billing items clears them from the outstanding grid, so refresh the project.
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.detail(variables.projectId),
-      });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
-      options?.onSuccess?.({ id: data.id });
+      }) as Promise<Invoice>,
+    onSuccess: (invoice) => {
+      invalidateInvoice(queryClient, invoice);
+      options?.onSuccess?.(invoice);
+    },
+  });
+}
+
+export function useMarkInvoiceSent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invoiceId: string) =>
+      request(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'send' }),
+      }) as Promise<Invoice>,
+    onSuccess: (invoice) => {
+      invalidateInvoice(queryClient, invoice);
+    },
+  });
+}
+
+export function useMarkInvoicePaid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invoiceId: string) =>
+      request(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'pay' }),
+      }) as Promise<Invoice>,
+    onSuccess: (invoice) => {
+      invalidateInvoice(queryClient, invoice);
     },
   });
 }

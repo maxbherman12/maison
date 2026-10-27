@@ -1,15 +1,32 @@
 import { basename } from 'node:path';
-import type { Invoice, GenerateInvoiceInput } from '../types';
-import type { InvoiceRepository, ProjectRepository } from '../repository/memory';
+import type {
+  Invoice,
+  InvoiceLineItem,
+  GenerateInvoiceInput,
+} from '../types';
+import type {
+  InvoiceRepository,
+  ProjectRepository,
+} from '../repository/memory';
 import type { BlobStore } from '../storage/blob-store';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { billableRowKey, buildBillableRows } from '../billing';
+import { getInvoiceDueDays } from '../invoices/config';
+import { AppError } from '../errors';
+
+interface InvoicePdfInput {
+  client: string;
+  project: string;
+  total: number;
+  items: InvoiceLineItem[];
+}
 
 interface InvoicePdfRenderer {
-  render(input: GenerateInvoiceInput): Promise<Buffer>;
+  render(input: InvoicePdfInput): Promise<Buffer>;
 }
 
 export class PdfInvoiceRenderer implements InvoicePdfRenderer {
-  async render(input: GenerateInvoiceInput): Promise<Buffer> {
+  async render(input: InvoicePdfInput): Promise<Buffer> {
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([612, 792]);
     const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -77,50 +94,129 @@ export class InvoiceService {
     return this.invoices.list(projectId);
   }
 
+  async getInvoice(id: string): Promise<Invoice | null> {
+    return this.invoices.get(id);
+  }
+
   async generateInvoice(input: GenerateInvoiceInput): Promise<Invoice> {
-    if (!input.client.trim()) {
-      throw new Error('Client name is required');
+    const project = await this.projects.get(input.projectId);
+    if (!project) {
+      throw new AppError('Project not found', 404);
     }
-    if (!input.project.trim()) {
-      throw new Error('Project name is required');
-    }
+
     if (!input.items.length) {
-      throw new Error('Invoice must have at least one line item');
+      throw new AppError('Invoice must have at least one line item');
     }
 
-    // The server is the source of truth for the total, so a client cannot
-    // inflate or deflate what the PDF says is due.
-    const total = input.items.reduce((sum, item) => sum + item.amount, 0);
+    const seen = new Set<string>();
+    for (const item of input.items) {
+      const key = `${item.source}:${item.id}`;
+      if (seen.has(key)) {
+        throw new AppError('Invoice contains duplicate line items');
+      }
+      seen.add(key);
+    }
+
+    // Derive titles and amounts from the project rows. The client only ever
+    // sends source references, so it cannot rewrite what was billed.
+    const pending = new Map(
+      buildBillableRows(project).map((row) => [billableRowKey(row), row])
+    );
+
+    const rows = input.items.map((item) => {
+      const row = pending.get(`${item.source}:${item.id}`);
+      if (!row) {
+        throw new AppError(
+          'One or more items are no longer pending on this project'
+        );
+      }
+      return row;
+    });
+
+    const total = rows.reduce((sum, row) => sum + row.amount, 0);
     if (total <= 0) {
-      throw new Error('Total must be greater than zero');
+      throw new AppError('Total must be greater than zero');
     }
 
-    const bytes = await this.renderer.render({ ...input, total });
+    const bytes = await this.renderer.render({
+      client: project.client,
+      project: project.project,
+      total,
+      items: rows.map((row) => ({
+        id: row.itemId,
+        source: row.source,
+        title: row.description,
+        amount: row.amount,
+      })),
+    });
 
-    const slug = input.project.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const slug = project.project.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     const { pathname } = await this.blobs.put(
       `invoices/${Date.now()}-${slug}.pdf`,
       bytes,
       { contentType: 'application/pdf' }
     );
 
-    const invoice = await this.invoices.create({
-      projectId: input.projectId,
-      number: '', // set by repository
-      createdAt: new Date().toISOString(),
-      total,
-      paid: false,
-      pathname,
-    } as Omit<Invoice, 'id'>);
+    try {
+      return await this.invoices.createWithItems({
+        projectId: project.id,
+        total,
+        pathname,
+        items: rows.map((row) => ({
+          source: row.source,
+          sourceId: row.itemId,
+          title: row.description,
+          amount: row.amount,
+        })),
+      });
+    } catch (error) {
+      // The PDF is already uploaded; remove it so a failed transaction does
+      // not leave an orphan blob behind.
+      try {
+        await this.blobs.delete(pathname);
+      } catch (cleanupError) {
+        console.error('[invoice] failed to delete orphaned blob', cleanupError);
+      }
+      throw error;
+    }
+  }
 
-    // Tie the billed items to the invoice so they stop showing as outstanding.
-    await this.projects.markItemsInvoiced(
-      input.projectId,
-      invoice.id,
-      input.items.map((item) => ({ id: item.id, source: item.source }))
-    );
+  async markSent(id: string): Promise<Invoice> {
+    const invoice = await this.invoices.get(id);
+    if (!invoice) {
+      throw new AppError('Invoice not found', 404);
+    }
+    if (invoice.paid) {
+      throw new AppError('Paid invoices cannot be marked as sent', 409);
+    }
+    if (invoice.sentAt) {
+      return invoice;
+    }
 
-    return invoice;
+    const sentAt = new Date();
+    const dueAt = addDays(sentAt, getInvoiceDueDays());
+    const updated = await this.invoices.markSent(id, sentAt, dueAt);
+
+    if (!updated) {
+      throw new AppError('Invoice not found', 404);
+    }
+    return updated;
+  }
+
+  async markPaid(id: string): Promise<Invoice> {
+    const invoice = await this.invoices.get(id);
+    if (!invoice) {
+      throw new AppError('Invoice not found', 404);
+    }
+    if (invoice.paid) {
+      return invoice;
+    }
+
+    const updated = await this.invoices.markPaid(id, new Date());
+    if (!updated) {
+      throw new AppError('Invoice not found', 404);
+    }
+    return updated;
   }
 
   async getInvoicePdf(id: string): Promise<{
@@ -139,8 +235,10 @@ export class InvoiceService {
       filename: basename(invoice.pathname),
     };
   }
+}
 
-  async markPaid(id: string): Promise<Invoice | null> {
-    return this.invoices.markPaid(id);
-  }
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
 }

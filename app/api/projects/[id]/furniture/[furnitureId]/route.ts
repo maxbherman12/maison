@@ -1,43 +1,42 @@
 import { projectService } from '@/lib/services/container';
-import { z } from 'zod';
+import { UpdateFurnitureSchema } from '@/lib/validators/invoices';
+import { errorResponse } from '@/lib/api/errors';
 import { NextResponse } from 'next/server';
-
-const StatusSchema = z.object({
-  status: z.enum(['Pending', 'Ordered', 'In transit', 'Delivered']),
-});
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; furnitureId: string }> }
 ) {
-  const { id, furnitureId } = await params;
-  const body = await request.json();
-  const input = StatusSchema.parse(body);
+  try {
+    const { id, furnitureId } = await params;
+    const body = await request.json();
+    const input = UpdateFurnitureSchema.parse(body);
 
-  const project = await projectService.updateFurnitureStatus(
-    id,
-    furnitureId,
-    input.status
-  );
+    const project = await projectService.updateFurniture(id, furnitureId, input);
+    if (!project) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
-  if (!project) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(project);
+  } catch (error) {
+    return errorResponse(error, 'Unable to update furniture');
   }
-
-  return NextResponse.json(project);
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; furnitureId: string }> }
 ) {
-  const { id, furnitureId } = await params;
+  try {
+    const { id, furnitureId } = await params;
 
-  const project = await projectService.deleteFurniture(id, furnitureId);
+    const project = await projectService.deleteFurniture(id, furnitureId);
+    if (!project) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
-  if (!project) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(project);
+  } catch (error) {
+    return errorResponse(error, 'Unable to delete furniture');
   }
-
-  return NextResponse.json(project);
 }
