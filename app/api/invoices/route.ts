@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     const invoice = await invoiceService.generateInvoice(input);
 
-    return NextResponse.json({ pathname: invoice.pathname, number: invoice.number });
+    return NextResponse.json({ id: invoice.id, number: invoice.number });
   } catch (error) {
     console.error('[invoice] generation failed', error);
     return NextResponse.json({ error: 'Unable to generate invoice' }, { status: 500 });

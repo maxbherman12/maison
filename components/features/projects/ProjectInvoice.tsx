@@ -15,11 +15,11 @@ interface ProjectInvoiceProps {
 
 export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
   const [generated, setGenerated] = useState(false);
-  const [invoicePath, setInvoicePath] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   const generateInvoice = useGenerateInvoice({
     onSuccess: (data) => {
-      setInvoicePath(data.pathname ?? null);
+      setInvoiceId(data.id);
       setGenerated(true);
     },
   });
@@ -64,7 +64,7 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
 
   return (
     <div className="mx-auto max-w-4xl">
-      {generated && invoicePath ? (
+      {generated && invoiceId ? (
         <div className="animate-in fade-in zoom-in duration-300">
           <div className="mt-8 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-6">
             <div className="flex items-center justify-between mb-4">
@@ -72,7 +72,7 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
               <button
                 onClick={() => {
                   setGenerated(false);
-                  setInvoicePath(null);
+                  setInvoiceId(null);
                 }}
                 aria-label="Close"
               >
@@ -84,7 +84,7 @@ export function ProjectInvoice({ project, onBack }: ProjectInvoiceProps) {
             </p>
             <div className="mt-6">
               <a
-                href={invoicePath}
+                href={`/api/invoices/${invoiceId}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-[#bd765b] hover:underline"

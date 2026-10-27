@@ -21,7 +21,7 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export function useGenerateInvoice(options?: {
-  onSuccess?: (data: { pathname: string | null }) => void;
+  onSuccess?: (data: { id: string }) => void;
 }) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -50,7 +50,7 @@ export function useGenerateInvoice(options?: {
         queryKey: projectKeys.detail(variables.projectId),
       });
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
-      options?.onSuccess?.({ pathname: data.pathname ?? null });
+      options?.onSuccess?.({ id: data.id });
     },
   });
 }

@@ -287,6 +287,11 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     return rows.map((row) => this.toInvoice(row));
   }
 
+  async get(id: string): Promise<Invoice | null> {
+    const [row] = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+    return row ? this.toInvoice(row) : null;
+  }
+
   async create(invoice: Omit<Invoice, 'id'>): Promise<Invoice> {
     const id = crypto.randomUUID();
     const counter = await this.nextCounter();
