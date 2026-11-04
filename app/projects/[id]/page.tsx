@@ -24,6 +24,8 @@ export default async function ProjectPage({
       backHref="/projects"
       backLabel="All projects"
       title={project.project}
+      fill
+      contentClassName="pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] sm:pt-6 sm:pb-6"
     >
       <ProjectClient project={project} invoices={invoices} />
     </ProjectShell>

@@ -66,12 +66,15 @@ interface ProjectItemsGridInnerProps {
   rows: BillableRow[];
   quickFilter: string;
   onOpenItem: (row: BillableRow) => void;
+  /** Fill the parent height instead of sizing to the number of rows. */
+  fill?: boolean;
 }
 
 export function ProjectItemsGridInner({
   rows,
   quickFilter,
   onOpenItem,
+  fill = false,
 }: ProjectItemsGridInnerProps) {
   const isCompact = useMediaQuery('(max-width: 767px)');
   const [pinnedBottomRowData, setPinnedBottomRowData] = useState<BillableRow[]>([]);
@@ -84,8 +87,8 @@ export function ProjectItemsGridInner({
       {
         field: 'type',
         headerName: 'Type',
-        width: isCompact ? 92 : 104,
-        minWidth: isCompact ? 88 : 96,
+        width: isCompact ? 84 : 104,
+        minWidth: isCompact ? 80 : 96,
         maxWidth: 130,
         sortable: true,
         filter: 'agTextColumnFilter',
@@ -98,7 +101,7 @@ export function ProjectItemsGridInner({
         field: 'description',
         headerName: 'Description',
         flex: 2,
-        minWidth: isCompact ? 130 : 150,
+        minWidth: isCompact ? 112 : 150,
         sortable: true,
         filter: 'agTextColumnFilter',
         cellDataType: 'text',
@@ -148,8 +151,8 @@ export function ProjectItemsGridInner({
       {
         field: 'amount',
         headerName: 'Amount',
-        width: isCompact ? 96 : 124,
-        minWidth: isCompact ? 92 : 112,
+        width: isCompact ? 86 : 124,
+        minWidth: isCompact ? 82 : 112,
         maxWidth: 160,
         sortable: true,
         filter: 'agNumberColumnFilter',
@@ -163,9 +166,9 @@ export function ProjectItemsGridInner({
       {
         colId: 'open',
         headerName: '',
-        width: 52,
-        minWidth: 52,
-        maxWidth: 52,
+        width: isCompact ? 44 : 52,
+        minWidth: isCompact ? 44 : 52,
+        maxWidth: isCompact ? 44 : 52,
         pinned: 'right',
         sortable: false,
         filter: false,
@@ -250,7 +253,10 @@ export function ProjectItemsGridInner({
   );
 
   return (
-    <div className="w-full" style={{ height: gridHeight }}>
+    <div
+      className={fill ? 'min-h-0 w-full' : 'w-full'}
+      style={{ height: gridHeight, maxHeight: fill ? '100%' : undefined }}
+    >
       <AgGridReact<BillableRow>
         theme={maisonTheme}
         context={context}
@@ -378,7 +384,7 @@ function OpenCell({
         }}
         aria-label={`Open ${data.description}`}
         title="Open item"
-        className="flex size-10 items-center justify-center rounded-full text-[#99998e] transition-colors hover:bg-[#f1e6df] hover:text-[#bd765b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bd765b]/40"
+        className="flex size-9 items-center justify-center rounded-full text-[#99998e] transition-colors hover:bg-[#f1e6df] hover:text-[#bd765b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bd765b]/40"
       >
         <ChevronRight className="size-4" />
       </button>

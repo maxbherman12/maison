@@ -5,33 +5,58 @@ import type { Invoice } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import { formatDate } from '@/lib/format-date';
 import { getInvoiceStatus } from '@/lib/invoices/status';
+import { cn } from '@/lib/utils';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
 interface InvoicesGridProps {
   invoices: Invoice[];
   projectId: string;
   emptyAction?: ReactNode;
+  /** Tighter empty state for a viewport panel. */
+  compact?: boolean;
+  /** Fill the parent height and own the list scroll. */
+  fill?: boolean;
 }
 
 export function InvoicesGrid({
   invoices,
   projectId,
   emptyAction,
+  compact = false,
+  fill = false,
 }: InvoicesGridProps) {
   if (invoices.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-[#deddd5] bg-[#fbfaf7] p-8 text-center">
-        <p className="font-serif text-2xl">No invoices yet</p>
+      <div
+        className={cn(
+          'text-center',
+          fill
+            ? 'flex min-h-0 flex-1 flex-col items-center justify-center p-6'
+            : cn(
+                'rounded-3xl border border-dashed border-[#deddd5] bg-[#fbfaf7]',
+                compact ? 'p-5' : 'p-8'
+              )
+        )}
+      >
+        <p className={cn('font-serif', compact ? 'text-xl' : 'text-2xl')}>
+          No invoices yet
+        </p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-[#85857a]">
           Generated invoices appear here with their status, total, and dates.
         </p>
-        {emptyAction && <div className="mt-5">{emptyAction}</div>}
+        {emptyAction && (
+          <div className={compact ? 'mt-4' : 'mt-5'}>{emptyAction}</div>
+        )}
       </div>
     );
   }
 
   return (
-    <>
+    <div
+      className={cn(
+        fill && 'min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1'
+      )}
+    >
       <div className="hidden overflow-hidden rounded-2xl border border-[#deddd5] bg-[#fbfaf7] md:block">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Invoices for this project</caption>
@@ -148,6 +173,6 @@ export function InvoicesGrid({
           );
         })}
       </ul>
-    </>
+    </div>
   );
 }

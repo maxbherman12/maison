@@ -18,7 +18,7 @@ export function InvoicePreview({
   return (
     <article
       aria-label="Draft invoice preview"
-      className="rounded-3xl border border-[#deddd5] bg-[#fffefa] p-5 shadow-[0_18px_50px_-35px_rgba(41,41,35,0.45)] sm:p-8 lg:p-10"
+      className="rounded-3xl border border-[#deddd5] bg-[#fffefa] p-4 shadow-[0_18px_50px_-35px_rgba(41,41,35,0.45)] sm:p-6 lg:p-8"
     >
       <header className="flex items-start justify-between gap-4 border-b border-[#e9e7df] pb-6">
         <div>

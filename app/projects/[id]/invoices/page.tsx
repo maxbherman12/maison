@@ -24,6 +24,8 @@ export default async function InvoicesPage({
       title="Invoices"
       backHref={`/projects/${project.id}`}
       backLabel="Project"
+      fill
+      contentClassName="pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] sm:pt-6 sm:pb-6"
     >
       <InvoiceIndex project={project} invoices={invoices} />
     </ProjectShell>

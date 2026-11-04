@@ -8,6 +8,13 @@
 
 **Roadmap:** [2026-10-21-product-roadmap.md](./2026-10-21-product-roadmap.md), Phase 4
 
+**Review correction (2026-11-03):** Review feedback required every page to fit
+the viewport instead of stacking sections. Project detail now uses a
+**Pending / Invoices** segmented control, and the shell gained an opt-in fill
+mode. Invoice index, composer, and invoice detail were made viewport-first in
+the same pass. See
+[2026-11-03-viewport-first-routes.md](./2026-11-03-viewport-first-routes.md).
+
 ## Problem
 
 Project detail still behaves like a collection of stacked mock views:
@@ -35,8 +42,8 @@ the pending-items grid, and invoice history.
 - A furniture row opens the board's `FurnitureSheet` for read/move/delete, with
   an Edit action that opens the shared `EditBillableItemSheet`.
 - An hour row opens the shared `EditBillableItemSheet` for editing.
-- Invoice history is visible below pending items, with status, total, dates, and
-  links to invoice detail.
+- Invoice history is one tap away in the project's **Invoices** tab, with
+  status, total, dates, and links to invoice detail.
 - The `Invoice` action opens the composer when pending work exists, otherwise
   invoice history.
 - No dead view-switcher or duplicate detail components remain.
@@ -62,10 +69,13 @@ state between the page and the summary.
 
 `ProjectSummary` keeps:
 
-- Client eyebrow, project title, and project edit affordance.
+- A compact client line and project edit affordance. The app header owns the
+  project title.
 - A compact action row: Log, Board, Invoice.
-- The pending items grid.
-- An invoice history section below it.
+- A Pending / Invoices segmented control with counts. Only the active panel is
+  mounted; it fills the remaining height.
+- The pending items grid in fill mode, with its own internal row scroll.
+- The invoice history panel in its own internal scroll region.
 
 It drops:
 

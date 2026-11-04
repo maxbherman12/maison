@@ -28,6 +28,8 @@ export default async function InvoiceDetailPage({
       title={invoice.number}
       backHref={`/projects/${project.id}/invoices`}
       backLabel="Invoices"
+      fill
+      contentClassName="pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] sm:pt-6 sm:pb-6"
     >
       <InvoiceDetail project={project} invoice={invoice} />
     </ProjectShell>

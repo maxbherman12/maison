@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import {
@@ -94,22 +93,22 @@ export function InvoiceWorkspace({
 
   if (rows.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <div className="rounded-3xl border border-dashed border-[#deddd5] bg-[#fbfaf7] p-8 text-center sm:p-12">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 items-center justify-center">
+        <div className="w-full p-6 text-center sm:p-10">
           <p className="text-[10px] uppercase tracking-[0.18em] text-[#99998e]">
             {project.client}
           </p>
-          <h1 className="mt-2 font-serif text-3xl">Nothing to invoice</h1>
+          <h2 className="mt-2 font-serif text-2xl">Nothing to invoice</h2>
           <p className="mx-auto mt-3 max-w-sm text-sm text-[#85857a]">
             Every logged hour and furniture item on this project has already
             been invoiced.
           </p>
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href={`/projects/${project.id}/log`}
               className={cn(
                 buttonVariants({ variant: 'outline' }),
-                'h-11 rounded-xl px-4'
+                'h-10 rounded-xl px-4'
               )}
             >
               Log work
@@ -118,7 +117,7 @@ export function InvoiceWorkspace({
               href={`/projects/${project.id}/invoices`}
               className={cn(
                 buttonVariants(),
-                'h-11 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
+                'h-10 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
               )}
             >
               Invoice history
@@ -130,34 +129,13 @@ export function InvoiceWorkspace({
   }
 
   return (
-    <div className="mx-auto max-w-[1380px]">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
-            {project.client}
-          </p>
-          <h1 className="mt-1 font-serif text-3xl leading-tight sm:text-4xl">
-            New invoice
-          </h1>
-          <p className="mt-2 text-sm text-[#85857a]">
-            Preview the invoice and choose what to bill for{' '}
-            <strong>{project.project}</strong>.
-          </p>
-        </div>
-        <Link
-          href={`/projects/${project.id}/invoices`}
-          className="inline-flex items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
-        >
-          Invoice history <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
-
-      <div className="mt-6 lg:hidden">
+    <div className="mx-auto flex min-h-0 w-full max-w-[1380px] flex-1 flex-col">
+      <div className="shrink-0 lg:hidden">
         <InvoiceMobileTabs value={tab} onChange={setTab} />
       </div>
 
       {error && (
-        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-4 py-3 text-sm text-[#a9573d] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-4 py-2.5 text-sm text-[#a9573d] sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
           <button
             type="button"
@@ -170,12 +148,16 @@ export function InvoiceWorkspace({
         </div>
       )}
 
-      <div className="mt-5 grid gap-6 pb-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-3 grid min-h-0 flex-1 gap-4 pb-3 lg:mt-0 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
         <section
           id="invoice-panel-preview"
           role="tabpanel"
           aria-labelledby="invoice-tab-preview"
-          className={cn(tab === 'preview' ? 'block' : 'hidden', 'lg:block')}
+          className={cn(
+            'min-h-0 overflow-y-auto overscroll-contain pr-1',
+            tab === 'preview' ? 'block' : 'hidden',
+            'lg:block'
+          )}
         >
           <InvoicePreview
             project={liveProject}
@@ -188,7 +170,11 @@ export function InvoiceWorkspace({
           id="invoice-panel-items"
           role="tabpanel"
           aria-labelledby="invoice-tab-items"
-          className={cn(tab === 'items' ? 'block' : 'hidden', 'lg:block')}
+          className={cn(
+            'min-h-0 overflow-y-auto overscroll-contain pr-1',
+            tab === 'items' ? 'block' : 'hidden',
+            'lg:block'
+          )}
         >
           <InvoiceItemSidebar
             rows={rows}
@@ -205,13 +191,13 @@ export function InvoiceWorkspace({
       </div>
 
       {lineItems.length === 0 && (
-        <p className="mb-4 text-center text-sm text-[#85857a]">
+        <p className="shrink-0 pb-2 text-center text-sm text-[#85857a]">
           Select at least one item to generate an invoice.
         </p>
       )}
 
-      <div className="sticky bottom-0 z-20 -mx-4 border-t border-[#deddd5] bg-[#f7f6f2]/95 px-4 py-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-2xl lg:border lg:px-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="shrink-0 border-t border-[#deddd5] bg-[#f7f6f2] pt-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
               Included

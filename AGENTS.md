@@ -92,12 +92,20 @@ No test, lint, or format scripts exist.
 
 - `/` — redirects to `/projects`
 - `/projects` — project list (`ProjectsListClient`), create project via `ProjectOnboard`
-- `/projects/[id]` — project detail (Server Component fetches project + invoice history, passes to `ProjectClient` → `ProjectSummary` with the pending-items grid and invoice grid)
+- `/projects/[id]` — project detail (Server Component fetches project + invoice history, passes to `ProjectClient` → `ProjectSummary`). The page fills the viewport and switches between **Pending** and **Invoices** tabs; only the active panel is mounted.
 - `/projects/[id]/log` — log hours and furniture
 - `/projects/[id]/board` — furniture board
-- `/projects/[id]/invoices` — invoice history
-- `/projects/[id]/invoices/new` — invoice composer
-- `/projects/[id]/invoices/[invoiceId]` — invoice detail
+- `/projects/[id]/invoices` — invoice ledger with a compact summary strip and an internally scrolling list
+- `/projects/[id]/invoices/new` — invoice composer; preview and item panels scroll independently, with the total/generate footer outside both
+- `/projects/[id]/invoices/[invoiceId]` — invoice detail; the document scrolls inside its own panel
+
+## Layout and scrolling
+
+- `AppShell` / `ProjectShell` render the app's single `<main>`. By default `<main>` scrolls.
+- Pass `fill` to `AppShell` / `ProjectShell` for viewport-first routes. The shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
+- `fill` is used by project detail, invoice index, composer, and invoice detail. Forms, the board, and the project list keep the default page scroll.
+- Do not repeat the app-header title as a page `<h1>` on viewport-first routes.
+- Use `overflow-y-auto overscroll-contain` only on the panel that genuinely needs to scroll. Do not add full-height page wrappers; the shell owns the viewport.
 
 ## Billing model
 
@@ -112,6 +120,9 @@ No test, lint, or format scripts exist.
 - Always set `cellDataType` on columns. AG Grid infers it from the first row's value, so a column starting with a date renders later non-date values as blank.
 - The AG Grid cell is `display: block` with a tall line-height, so cell renderers should use `absolute inset-0 flex items-center` to centre themselves.
 - Pending rows are actionable: row click, Enter/Space, and the pinned Open cell all call `onOpenItem`; the pinned total row is ignored.
+- `ProjectItemsGrid` accepts `fill`. In fill mode the grid sizes to its rows up to the available height (`maxHeight: 100%`) and scrolls its own rows; the pinned total stays at the grid bottom. Keep every ancestor in the flex chain `min-h-0`.
+- Compact mobile columns are tuned to fit 375–390 px without horizontal clipping. Re-check the Type, Description, Amount, and pinned Open widths together when changing one.
+- `InvoicesGrid` accepts `compact` for tighter empty states and `fill` when it should own its list scroll. The project detail Invoices tab keeps its own scroll container around the non-fill grid.
 
 ## Styling
 

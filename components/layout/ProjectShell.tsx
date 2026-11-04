@@ -15,6 +15,8 @@ interface ProjectShellProps {
   context?: string;
   actions?: ReactNode;
   contentClassName?: string;
+  /** Give the route the viewport height and let its panels scroll internally. */
+  fill?: boolean;
 }
 
 export function ProjectShell({
@@ -26,12 +28,14 @@ export function ProjectShell({
   context,
   actions,
   contentClassName,
+  fill = false,
 }: ProjectShellProps) {
   const resolvedContext =
     context ?? (title ? undefined : `${project.client} — ${project.project}`);
 
   return (
     <AppShell
+      fill={fill}
       contentClassName={contentClassName}
       header={
         <AppHeader

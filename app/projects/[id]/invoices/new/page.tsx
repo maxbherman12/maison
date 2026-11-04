@@ -31,6 +31,8 @@ export default async function NewInvoicePage({
           History
         </Link>
       }
+      fill
+      contentClassName="pt-4 pb-0 sm:pt-6"
     >
       <InvoiceWorkspace project={project} issueDate={new Date().toISOString()} />
     </ProjectShell>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowRight,
+  ArrowUpRight,
   Check,
   Columns3,
   FileText,
@@ -11,11 +11,8 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import type {
-  FurnitureStatus,
-  Invoice,
-  Project,
-} from '@/lib/types';
+import type { FurnitureStatus, Invoice, Project } from '@/lib/types';
+import { formatMoney } from '@/lib/types';
 import type { BillableRow } from '@/lib/billing';
 import { buildBillableRows } from '@/lib/billing';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -41,11 +38,23 @@ interface Notice {
   text: string;
 }
 
+type ProjectTab = 'pending' | 'invoices';
+
+const TABS: { value: ProjectTab; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'invoices', label: 'Invoices' },
+];
+
 export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
   const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<ProjectTab>('pending');
   const [openFurnitureId, setOpenFurnitureId] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<BillableRow | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const tabRefs = useRef<Record<ProjectTab, HTMLButtonElement | null>>({
+    pending: null,
+    invoices: null,
+  });
 
   const { data: liveInvoices = invoices } = useInvoices(project.id, invoices);
   const updateFurnitureStatus = useUpdateFurnitureStatus();
@@ -67,6 +76,12 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
     const timeout = window.setTimeout(() => setNotice(null), 2800);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    if (!hasPendingItems && liveInvoices.length > 0) {
+      setTab('invoices');
+    }
+  }, [hasPendingItems, liveInvoices.length]);
 
   useEffect(() => {
     if (
@@ -165,102 +180,157 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
     );
   };
 
+  const selectTab = (value: ProjectTab, focus = false) => {
+    setTab(value);
+    if (focus) {
+      requestAnimationFrame(() => tabRefs.current[value]?.focus());
+    }
+  };
+
+  const moveTab = (direction: -1 | 1) => {
+    const index = TABS.findIndex((candidate) => candidate.value === tab);
+    const next = TABS[(index + direction + TABS.length) % TABS.length];
+    selectTab(next.value, true);
+  };
+
+  const counts: Record<ProjectTab, number> = {
+    pending: rows.length,
+    invoices: liveInvoices.length,
+  };
+
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex items-start justify-between gap-3 mb-6">
-        <div className="min-w-0">
-          <span className="text-[10px] uppercase tracking-[0.16em] text-[#99998e] block mt-1">
-            {project.client}
-          </span>
-          <h1 className="mt-1 truncate font-serif text-3xl leading-tight sm:text-4xl">
-            {project.project}
-          </h1>
-        </div>
-        <button
-          onClick={() => setEditing(true)}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:bg-[#f1e6df] transition-colors"
-          aria-label="Edit project details"
-          title="Edit project details"
-        >
-          <Pencil className="size-5" />
-        </button>
+    <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
+      <div className="flex items-center justify-between gap-3 pb-3">
+        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
+          {project.client}
+        </p>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] transition-colors hover:bg-[#f1e6df]"
+            aria-label="Edit project details"
+            title="Edit project details"
+          >
+            <Pencil className="size-4" />
+          </button>
+        )}
       </div>
 
       {editing ? (
-        <ProjectEditForm
-          project={project}
-          onSave={() => setEditing(false)}
-          onCancel={() => setEditing(false)}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <ProjectEditForm
+            project={project}
+            onSave={() => setEditing(false)}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
       ) : (
         <>
-          <div className="mb-6 flex justify-end">
-            <div className="grid w-full grid-cols-3 gap-2 sm:w-[360px]">
-              <ActionButton
-                icon={<Plus className="size-5" />}
-                title="Log"
-                href={`/projects/${project.id}/log`}
-                variant="primary"
-              />
-              <ActionButton
-                icon={<Columns3 className="size-5" />}
-                title="Board"
-                href={`/projects/${project.id}/board`}
-              />
-              <ActionButton
-                icon={<FileText className="size-5" />}
-                title="Invoice"
-                href={invoiceHref}
-              />
-            </div>
+          <div className="grid w-full grid-cols-3 gap-2 pb-3 sm:ml-auto sm:w-[360px]">
+            <ActionButton
+              icon={<Plus className="size-4" />}
+              title="Log"
+              href={`/projects/${project.id}/log`}
+              variant="primary"
+            />
+            <ActionButton
+              icon={<Columns3 className="size-4" />}
+              title="Board"
+              href={`/projects/${project.id}/board`}
+            />
+            <ActionButton
+              icon={<FileText className="size-4" />}
+              title="Invoice"
+              href={invoiceHref}
+            />
           </div>
 
-          <ProjectItemsGrid project={project} onOpenItem={openRow} />
+          <div
+            role="tablist"
+            aria-label="Project items"
+            className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[#deddd5] bg-[#ece9e0] p-1"
+          >
+            {TABS.map((candidate) => {
+              const selected = candidate.value === tab;
 
-          <section className="mt-10">
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <div>
-                <h2 className="font-serif text-2xl">Invoices</h2>
-                <p className="mt-1 text-sm text-[#85857a]">
-                  Issued invoices for this project.
-                </p>
-              </div>
-              <Link
-                href={`/projects/${project.id}/invoices`}
-                className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
-              >
-                All invoices <ArrowRight className="size-3.5" />
-              </Link>
+              return (
+                <button
+                  key={candidate.value}
+                  ref={(node) => {
+                    tabRefs.current[candidate.value] = node;
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`project-tab-${candidate.value}`}
+                  aria-selected={selected}
+                  aria-controls={`project-panel-${candidate.value}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => selectTab(candidate.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowRight') {
+                      event.preventDefault();
+                      moveTab(1);
+                    } else if (event.key === 'ArrowLeft') {
+                      event.preventDefault();
+                      moveTab(-1);
+                    } else if (event.key === 'Home') {
+                      event.preventDefault();
+                      selectTab(TABS[0].value, true);
+                    } else if (event.key === 'End') {
+                      event.preventDefault();
+                      selectTab(TABS[TABS.length - 1].value, true);
+                    }
+                  }}
+                  className={cn(
+                    'flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors sm:h-10',
+                    selected
+                      ? 'bg-[#fffefa] text-[#292923] shadow-sm'
+                      : 'text-[#85857a] hover:text-[#292923]'
+                  )}
+                >
+                  {candidate.label}
+                  <span
+                    className={cn(
+                      'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] leading-5 tabular-nums',
+                      selected
+                        ? 'bg-[#f1e6df] text-[#a9573d]'
+                        : 'bg-[#deddd5] text-[#6b564a]'
+                    )}
+                  >
+                    {counts[candidate.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {tab === 'pending' ? (
+            <div
+              id="project-panel-pending"
+              role="tabpanel"
+              aria-labelledby="project-tab-pending"
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <ProjectItemsGrid
+                project={project}
+                onOpenItem={openRow}
+                fill
+              />
             </div>
-
-            <InvoicesGrid
-              invoices={liveInvoices}
-              projectId={project.id}
-              emptyAction={
-                hasPendingItems ? (
-                  <Link
-                    href={`/projects/${project.id}/invoices/new`}
-                    className={cn(
-                      buttonVariants(),
-                      'h-11 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
-                    )}
-                  >
-                    Create invoice
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/projects/${project.id}/log`}
-                    className={cn(
-                      buttonVariants({ variant: 'outline' }),
-                      'h-11 rounded-xl px-4'
-                    )}
-                  >
-                    Log work
-                  </Link>
-                )
-              }
-            />
-          </section>
+          ) : (
+            <div
+              id="project-panel-invoices"
+              role="tabpanel"
+              aria-labelledby="project-tab-invoices"
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <ProjectInvoicesPanel
+                projectId={project.id}
+                invoices={liveInvoices}
+                hasPendingItems={hasPendingItems}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -304,6 +374,75 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
   );
 }
 
+function ProjectInvoicesPanel({
+  projectId,
+  invoices,
+  hasPendingItems,
+}: {
+  projectId: string;
+  invoices: Invoice[];
+  hasPendingItems: boolean;
+}) {
+  const total = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
+  const newInvoiceHref = `/projects/${projectId}/invoices/new`;
+
+  if (invoices.length === 0) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center">
+        <p className="font-serif text-xl">No invoices yet</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-[#85857a]">
+          Generated invoices appear here with their status, total, and dates.
+        </p>
+        <Link
+          href={hasPendingItems ? newInvoiceHref : `/projects/${projectId}/log`}
+          className={cn(
+            buttonVariants(),
+            'mt-4 h-10 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
+          )}
+        >
+          {hasPendingItems ? 'Create invoice' : 'Log work'}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
+        <p className="text-xs text-[#85857a] sm:text-sm">
+          {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'} ·{' '}
+          <span className="text-[#292923]">{formatMoney(total)}</span>
+          <span className="hidden sm:inline"> invoiced</span>
+        </p>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/projects/${projectId}/invoices`}
+            className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs text-[#bd765b] transition-colors hover:bg-[#f1e6df] sm:text-sm"
+          >
+            All invoices
+            <ArrowUpRight className="size-3.5" />
+          </Link>
+          {hasPendingItems && (
+            <Link
+              href={newInvoiceHref}
+              className={cn(
+                buttonVariants(),
+                'h-10 rounded-xl bg-[#bd765b] px-3 text-xs text-white hover:bg-[#a9573d] sm:text-sm'
+              )}
+            >
+              New invoice
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+        <InvoicesGrid invoices={invoices} projectId={projectId} />
+      </div>
+    </div>
+  );
+}
+
 function ActionButton({
   icon,
   title,
@@ -315,7 +454,7 @@ function ActionButton({
   href: string;
   variant?: 'default' | 'primary';
 }) {
-  const className = `flex h-12 items-center justify-center gap-2 rounded-xl border px-2 text-sm transition-colors sm:h-11 sm:flex-1 sm:px-3 ${
+  const className = `flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-medium transition-colors sm:h-10 ${
     variant === 'primary'
       ? 'border-[#bd765b] bg-[#bd765b] text-white hover:bg-[#a9573d]'
       : 'border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:border-[#bd765b] hover:bg-[#f1e6df]'
@@ -323,8 +462,8 @@ function ActionButton({
 
   return (
     <Link href={href} className={className} title={title} aria-label={title}>
-      <span className="flex size-8 items-center justify-center">{icon}</span>
-      <span className="text-xs font-medium">{title}</span>
+      <span className="flex items-center justify-center">{icon}</span>
+      <span>{title}</span>
     </Link>
   );
 }
@@ -383,7 +522,7 @@ function ProjectEditForm({
   };
 
   return (
-    <div className="mt-7 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-5">
+    <div className="rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Client name" value={client} onChange={setClient} />
         <Field label="Project name" value={name} onChange={setName} />
@@ -432,7 +571,7 @@ function Field({
         {label}
       </span>
       <span className="flex items-center rounded-xl border border-[#deddd5] bg-[#fffefa] focus-within:border-[#bd765b]">
-        {prefix && <span className="text-sm text-[#99998e] px-3">{prefix}</span>}
+        {prefix && <span className="px-3 text-sm text-[#99998e]">{prefix}</span>}
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
