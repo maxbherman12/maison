@@ -1,21 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpRight,
-  Check,
   Columns3,
   FileText,
   Pencil,
   Plus,
-  X,
 } from 'lucide-react';
 import type { FurnitureStatus, Invoice, Project } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import type { BillableRow } from '@/lib/billing';
 import { buildBillableRows } from '@/lib/billing';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { SegmentedTabs } from '@/components/ui/segmented-tabs';
+import { TextField } from '@/components/ui/form-field';
+import { Toast, useNotice } from '@/components/ui/toast';
 import { useInvoices } from '@/lib/query/invoices';
 import {
   useDeleteFurniture,
@@ -33,11 +36,6 @@ interface ProjectSummaryProps {
   invoices: Invoice[];
 }
 
-interface Notice {
-  tone: 'success' | 'error';
-  text: string;
-}
-
 type ProjectTab = 'pending' | 'invoices';
 
 const TABS: { value: ProjectTab; label: string }[] = [
@@ -50,11 +48,8 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
   const [tab, setTab] = useState<ProjectTab>('pending');
   const [openFurnitureId, setOpenFurnitureId] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<BillableRow | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const tabRefs = useRef<Record<ProjectTab, HTMLButtonElement | null>>({
-    pending: null,
-    invoices: null,
-  });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [notice, setNotice] = useNotice();
 
   const { data: liveInvoices = invoices } = useInvoices(project.id, invoices);
   const updateFurnitureStatus = useUpdateFurnitureStatus();
@@ -70,12 +65,6 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
   const invoiceHref = hasPendingItems
     ? `/projects/${project.id}/invoices/new`
     : `/projects/${project.id}/invoices`;
-
-  useEffect(() => {
-    if (!notice) return;
-    const timeout = window.setTimeout(() => setNotice(null), 2800);
-    return () => window.clearTimeout(timeout);
-  }, [notice]);
 
   useEffect(() => {
     if (!hasPendingItems && liveInvoices.length > 0) {
@@ -158,12 +147,12 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
 
   const removeFurniture = () => {
     if (!openFurniture) return;
-    if (!window.confirm('Delete this furniture entry?')) return;
 
     deleteFurniture.mutate(
       { projectId: project.id, furnitureId: openFurniture.id },
       {
         onSuccess: () => {
+          setConfirmDelete(false);
           setOpenFurnitureId(null);
           setNotice({ tone: 'success', text: 'Furniture entry deleted' });
         },
@@ -180,39 +169,34 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
     );
   };
 
-  const selectTab = (value: ProjectTab, focus = false) => {
-    setTab(value);
-    if (focus) {
-      requestAnimationFrame(() => tabRefs.current[value]?.focus());
-    }
-  };
-
-  const moveTab = (direction: -1 | 1) => {
-    const index = TABS.findIndex((candidate) => candidate.value === tab);
-    const next = TABS[(index + direction + TABS.length) % TABS.length];
-    selectTab(next.value, true);
-  };
-
   const counts: Record<ProjectTab, number> = {
     pending: rows.length,
     invoices: liveInvoices.length,
   };
 
+  const tabItems = TABS.map((item) => ({
+    ...item,
+    count: counts[item.value],
+  }));
+
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
       <div className="flex items-center justify-between gap-3 pb-3">
-        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
+        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
           {project.client}
         </p>
         {!editing && (
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             onClick={() => setEditing(true)}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] transition-colors hover:bg-[#f1e6df]"
+            className="rounded-full text-primary"
             aria-label="Edit project details"
             title="Edit project details"
           >
             <Pencil className="size-4" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -245,64 +229,14 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
             />
           </div>
 
-          <div
-            role="tablist"
-            aria-label="Project items"
-            className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[#deddd5] bg-[#ece9e0] p-1"
-          >
-            {TABS.map((candidate) => {
-              const selected = candidate.value === tab;
-
-              return (
-                <button
-                  key={candidate.value}
-                  ref={(node) => {
-                    tabRefs.current[candidate.value] = node;
-                  }}
-                  type="button"
-                  role="tab"
-                  id={`project-tab-${candidate.value}`}
-                  aria-selected={selected}
-                  aria-controls={`project-panel-${candidate.value}`}
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => selectTab(candidate.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'ArrowRight') {
-                      event.preventDefault();
-                      moveTab(1);
-                    } else if (event.key === 'ArrowLeft') {
-                      event.preventDefault();
-                      moveTab(-1);
-                    } else if (event.key === 'Home') {
-                      event.preventDefault();
-                      selectTab(TABS[0].value, true);
-                    } else if (event.key === 'End') {
-                      event.preventDefault();
-                      selectTab(TABS[TABS.length - 1].value, true);
-                    }
-                  }}
-                  className={cn(
-                    'flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors sm:h-10',
-                    selected
-                      ? 'bg-[#fffefa] text-[#292923] shadow-sm'
-                      : 'text-[#85857a] hover:text-[#292923]'
-                  )}
-                >
-                  {candidate.label}
-                  <span
-                    className={cn(
-                      'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] leading-5 tabular-nums',
-                      selected
-                        ? 'bg-[#f1e6df] text-[#a9573d]'
-                        : 'bg-[#deddd5] text-[#6b564a]'
-                    )}
-                  >
-                    {counts[candidate.value]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedTabs
+            ariaLabel="Project items"
+            value={tab}
+            onChange={setTab}
+            idPrefix="project"
+            items={tabItems}
+            className="mb-3"
+          />
 
           {tab === 'pending' ? (
             <div
@@ -334,14 +268,26 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
         </>
       )}
 
-      {openFurniture && (
+      {openFurniture && !confirmDelete && (
         <FurnitureSheet
           key={openFurniture.id}
           item={openFurniture}
           onClose={() => setOpenFurnitureId(null)}
           onMove={moveFurniture}
-          onDelete={removeFurniture}
+          onDelete={() => setConfirmDelete(true)}
           onEdit={editOpenFurniture}
+        />
+      )}
+
+      {openFurniture && confirmDelete && (
+        <ConfirmDialog
+          title="Delete furniture entry?"
+          description={`This will remove ${openFurniture.name} from the project. This cannot be undone.`}
+          confirmLabel="Delete entry"
+          tone="destructive"
+          pending={deleteFurniture.isPending}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={removeFurniture}
         />
       )}
 
@@ -353,23 +299,7 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
         />
       )}
 
-      {notice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={cn(
-            'pointer-events-none fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2.5 text-sm text-white shadow-lg',
-            notice.tone === 'error' ? 'bg-[#a9573d]' : 'bg-[#292923]'
-          )}
-        >
-          {notice.tone === 'success' ? (
-            <Check className="size-4" />
-          ) : (
-            <X className="size-4" />
-          )}
-          {notice.text}
-        </div>
-      )}
+      <Toast notice={notice} />
     </div>
   );
 }
@@ -390,15 +320,12 @@ function ProjectInvoicesPanel({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center">
         <p className="font-serif text-xl">No invoices yet</p>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-[#85857a]">
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
           Generated invoices appear here with their status, total, and dates.
         </p>
         <Link
           href={hasPendingItems ? newInvoiceHref : `/projects/${projectId}/log`}
-          className={cn(
-            buttonVariants(),
-            'mt-4 h-10 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
-          )}
+          className={cn(buttonVariants(), 'mt-4')}
         >
           {hasPendingItems ? 'Create invoice' : 'Log work'}
         </Link>
@@ -409,15 +336,15 @@ function ProjectInvoicesPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
-        <p className="text-xs text-[#85857a] sm:text-sm">
+        <p className="text-xs text-muted-foreground sm:text-sm">
           {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'} ·{' '}
-          <span className="text-[#292923]">{formatMoney(total)}</span>
+          <span className="text-foreground">{formatMoney(total)}</span>
           <span className="hidden sm:inline"> invoiced</span>
         </p>
         <div className="flex items-center gap-2">
           <Link
             href={`/projects/${projectId}/invoices`}
-            className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs text-[#bd765b] transition-colors hover:bg-[#f1e6df] sm:text-sm"
+            className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs text-primary transition-colors hover:bg-accent sm:text-sm"
           >
             All invoices
             <ArrowUpRight className="size-3.5" />
@@ -425,10 +352,7 @@ function ProjectInvoicesPanel({
           {hasPendingItems && (
             <Link
               href={newInvoiceHref}
-              className={cn(
-                buttonVariants(),
-                'h-10 rounded-xl bg-[#bd765b] px-3 text-xs text-white hover:bg-[#a9573d] sm:text-sm'
-              )}
+              className={cn(buttonVariants(), 'px-3 text-xs sm:text-sm')}
             >
               New invoice
             </Link>
@@ -454,14 +378,18 @@ function ActionButton({
   href: string;
   variant?: 'default' | 'primary';
 }) {
-  const className = `flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-medium transition-colors sm:h-10 ${
-    variant === 'primary'
-      ? 'border-[#bd765b] bg-[#bd765b] text-white hover:bg-[#a9573d]'
-      : 'border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:border-[#bd765b] hover:bg-[#f1e6df]'
-  }`;
-
   return (
-    <Link href={href} className={className} title={title} aria-label={title}>
+    <Link
+      href={href}
+      className={cn(
+        buttonVariants({
+          variant: variant === 'primary' ? 'default' : 'outline',
+        }),
+        'h-11 gap-1.5 px-2 text-xs sm:h-10'
+      )}
+      title={title}
+      aria-label={title}
+    >
       <span className="flex items-center justify-center">{icon}</span>
       <span>{title}</span>
     </Link>
@@ -522,23 +450,36 @@ function ProjectEditForm({
   };
 
   return (
-    <div className="rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-5">
+    <div className="rounded-2xl border border-border bg-secondary p-5">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Client name" value={client} onChange={setClient} />
-        <Field label="Project name" value={name} onChange={setName} />
-        <Field label="Address" value={address} onChange={setAddress} />
-        <Field label="Hourly rate" value={rate} prefix="$" onChange={setRate} />
+        <TextField
+          label="Client name"
+          value={client}
+          onChange={(event) => setClient(event.target.value)}
+        />
+        <TextField
+          label="Project name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+        <TextField
+          label="Address"
+          value={address}
+          onChange={(event) => setAddress(event.target.value)}
+        />
+        <TextField
+          label="Hourly rate"
+          value={rate}
+          prefix="$"
+          onChange={(event) => setRate(event.target.value)}
+        />
       </div>
-      {error && (
-        <p className="mt-4 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-4 py-3 text-sm text-[#a9573d]">
-          {error}
-        </p>
-      )}
+      {error && <Alert className="mt-4">{error}</Alert>}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <Button
           onClick={handleSave}
           disabled={updateProject.isPending}
-          className="w-full rounded-xl bg-[#bd765b] text-white sm:w-auto"
+          className="w-full sm:w-auto"
         >
           {updateProject.isPending ? 'Saving...' : 'Save details'}
         </Button>
@@ -551,33 +492,5 @@ function ProjectEditForm({
         </Button>
       </div>
     </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  prefix,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  prefix?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs uppercase tracking-[0.1em] text-[#85857a]">
-        {label}
-      </span>
-      <span className="flex items-center rounded-xl border border-[#deddd5] bg-[#fffefa] focus-within:border-[#bd765b]">
-        {prefix && <span className="px-3 text-sm text-[#99998e]">{prefix}</span>}
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-11 w-full bg-transparent px-1 text-sm outline-none"
-        />
-      </span>
-    </label>
   );
 }

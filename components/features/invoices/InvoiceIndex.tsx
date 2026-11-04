@@ -33,28 +33,25 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
       <div className="flex items-center justify-between gap-3 pb-3">
-        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
+        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
           {project.client} · {project.project}
         </p>
         {canInvoice ? (
           <Link
             href={newInvoiceHref}
-            className={cn(
-              buttonVariants(),
-              'h-10 shrink-0 rounded-xl bg-[#bd765b] px-3 text-white hover:bg-[#a9573d]'
-            )}
+            className={cn(buttonVariants(), 'h-10 shrink-0 px-3')}
           >
             <FilePlus2 className="size-4" />
             New invoice
           </Link>
         ) : liveInvoices.length > 0 ? (
-          <span className="shrink-0 rounded-xl border border-[#deddd5] bg-[#fbfaf7] px-3 py-2 text-xs text-[#85857a]">
+          <span className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
             Everything invoiced
           </span>
         ) : null}
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-[#deddd5] overflow-hidden rounded-2xl bg-[#ece9e0]">
+      <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-2xl bg-muted">
         <Summary label="Pending" value={formatMoney(pendingTotal)} />
         <Summary label="Invoices" value={String(liveInvoices.length)} />
         <Summary label="Invoiced" value={formatMoney(invoicedTotal)} />
@@ -70,10 +67,7 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
             canInvoice ? (
               <Link
                 href={newInvoiceHref}
-                className={cn(
-                  buttonVariants(),
-                  'h-10 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
-                )}
+                className={cn(buttonVariants(), 'h-10 px-4')}
               >
                 Create invoice
               </Link>
@@ -82,7 +76,7 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
                 href={`/projects/${project.id}/log`}
                 className={cn(
                   buttonVariants({ variant: 'outline' }),
-                  'h-10 rounded-xl'
+                  'h-10'
                 )}
               >
                 Log work
@@ -98,7 +92,7 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 px-3 py-3">
-      <span className="block truncate text-[9px] uppercase tracking-[0.12em] text-[#99998e]">
+      <span className="block truncate text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </span>
       <strong className="mt-1 block truncate font-serif text-lg font-normal sm:text-xl">

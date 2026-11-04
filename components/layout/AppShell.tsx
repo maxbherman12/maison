@@ -28,7 +28,7 @@ export function AppShell({
   fill = false,
 }: AppShellProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[#f7f6f2] text-[#292923]">
+    <div className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
       {header}
       <main
         data-app-scroll

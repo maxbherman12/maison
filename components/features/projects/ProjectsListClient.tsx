@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useProjects } from '@/lib/query/projects';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/button';
 import { ProjectList } from './ProjectList';
 import { ProjectOnboard } from './ProjectOnboard';
 
@@ -17,13 +18,9 @@ export function ProjectsListClient() {
         <AppHeader
           brand
           actions={
-            <button
-              type="button"
-              onClick={() => setOnboarding(true)}
-              className="rounded-full bg-[#bd765b] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#a9573d]"
-            >
+            <Button type="button" onClick={() => setOnboarding(true)}>
               New project
-            </button>
+            </Button>
           }
         />
       }

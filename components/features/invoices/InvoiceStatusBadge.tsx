@@ -1,11 +1,11 @@
 import type { InvoiceStatus } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
 
-const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  Issued: 'bg-[#ece9e0] text-[#6b564a]',
-  Sent: 'bg-[#dde3e6] text-[#4f6068]',
-  Paid: 'bg-[#dbe1d4] text-[#5b6753]',
-  Overdue: 'bg-[#f1dcd4] text-[#a9573d]',
+const STATUS_TONES: Record<InvoiceStatus, BadgeTone> = {
+  Issued: 'neutral',
+  Sent: 'info',
+  Paid: 'success',
+  Overdue: 'danger',
 };
 
 interface InvoiceStatusBadgeProps {
@@ -18,14 +18,8 @@ export function InvoiceStatusBadge({
   className,
 }: InvoiceStatusBadgeProps) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium leading-tight tracking-wide',
-        STATUS_STYLES[status],
-        className
-      )}
-    >
+    <Badge tone={STATUS_TONES[status]} className={className}>
       {status}
-    </span>
+    </Badge>
   );
 }

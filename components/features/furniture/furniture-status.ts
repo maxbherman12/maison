@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { FurnitureStatus } from '@/lib/types';
+import type { BadgeTone } from '@/components/ui/badge';
 
 export const FURNITURE_STATUS_ORDER = [
   'Pending',
@@ -16,6 +17,7 @@ export const FURNITURE_STATUS_ORDER = [
 
 interface StatusMeta {
   icon: LucideIcon;
+  tone: BadgeTone;
   dot: string;
   tint: string;
   text: string;
@@ -25,30 +27,34 @@ interface StatusMeta {
 export const FURNITURE_STATUS_META: Record<FurnitureStatus, StatusMeta> = {
   Pending: {
     icon: Clock3,
-    dot: 'bg-[#bd765b]',
-    tint: 'bg-[#f5e7e0]',
-    text: 'text-[#a9573d]',
-    border: 'border-[#bd765b]',
+    tone: 'brand',
+    dot: 'bg-tone-brand-dot',
+    tint: 'bg-tone-brand-bg',
+    text: 'text-tone-brand-fg',
+    border: 'border-primary',
   },
   Ordered: {
     icon: ShoppingBag,
-    dot: 'bg-[#b58a4a]',
-    tint: 'bg-[#f4eddd]',
-    text: 'text-[#8c6a34]',
-    border: 'border-[#b58a4a]',
+    tone: 'warning',
+    dot: 'bg-tone-warning-dot',
+    tint: 'bg-tone-warning-bg',
+    text: 'text-tone-warning-fg',
+    border: 'border-tone-warning-dot',
   },
   'In transit': {
     icon: Truck,
-    dot: 'bg-[#6f8a9c]',
-    tint: 'bg-[#e7eef2]',
-    text: 'text-[#526b7b]',
-    border: 'border-[#6f8a9c]',
+    tone: 'info',
+    dot: 'bg-tone-info-dot',
+    tint: 'bg-tone-info-bg',
+    text: 'text-tone-info-fg',
+    border: 'border-tone-info-dot',
   },
   Delivered: {
     icon: CircleCheck,
-    dot: 'bg-[#7f8f72]',
-    tint: 'bg-[#e9eee4]',
-    text: 'text-[#5f6f53]',
-    border: 'border-[#7f8f72]',
+    tone: 'success',
+    dot: 'bg-tone-success-dot',
+    tint: 'bg-tone-success-bg',
+    text: 'text-tone-success-fg',
+    border: 'border-tone-success-dot',
   },
 };
