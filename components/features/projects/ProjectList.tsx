@@ -16,17 +16,17 @@ export function ProjectList({ projects }: ProjectListProps) {
           <a
             key={item.id}
             href={`/projects/${item.id}`}
-            className="flex w-full items-center gap-3 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-3 text-left sm:p-5 hover:bg-[#f1e6df] transition-colors"
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-secondary p-3 text-left transition-colors hover:bg-accent sm:p-5"
           >
             <div className="flex min-w-0 items-center gap-4">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#dbe1d4] text-sm text-[#5b6753]">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-tone-success-bg text-sm text-tone-success-fg">
                 {item.initials}
               </span>
               <span className="min-w-0">
                 <strong className="block truncate font-serif text-xl font-normal">
                   {item.client}
                 </strong>
-                <span className="block truncate text-sm text-[#85857a]">
+                <span className="block truncate text-sm text-muted-foreground">
                   {item.project}
                 </span>
               </span>
@@ -36,7 +36,7 @@ export function ProjectList({ projects }: ProjectListProps) {
         ))}
         {projects.length === 0 && (
           <div className="p-8 text-center">
-            <p className="text-sm text-[#85857a]">No projects yet. Create your first project to get started.</p>
+            <p className="text-sm text-muted-foreground">No projects yet. Create your first project to get started.</p>
           </div>
         )}
       </div>

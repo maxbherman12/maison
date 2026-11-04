@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye, ListChecks } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import {
@@ -13,14 +14,27 @@ import {
 import { useProject } from '@/lib/query/projects';
 import { useGenerateInvoice } from '@/lib/query/invoices';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { SegmentedTabs } from '@/components/ui/segmented-tabs';
 import { cn } from '@/lib/utils';
 import { InvoicePreview } from './InvoicePreview';
 import { InvoiceItemSidebar } from './InvoiceItemSidebar';
-import {
-  InvoiceMobileTabs,
-  type InvoiceMobileTab,
-} from './InvoiceMobileTabs';
 import { EditBillableItemSheet } from './EditBillableItemSheet';
+
+type InvoiceMobileTab = 'preview' | 'items';
+
+const TABS = [
+  { value: 'preview', label: 'Preview', icon: <Eye className="size-4" /> },
+  {
+    value: 'items',
+    label: 'Items',
+    icon: <ListChecks className="size-4" />,
+  },
+] as const satisfies readonly {
+  value: InvoiceMobileTab;
+  label: string;
+  icon: ReactNode;
+}[];
 
 interface InvoiceWorkspaceProps {
   project: Project;
@@ -95,30 +109,24 @@ export function InvoiceWorkspace({
     return (
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 items-center justify-center">
         <div className="w-full p-6 text-center sm:p-10">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-[#99998e]">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             {project.client}
           </p>
           <h2 className="mt-2 font-serif text-2xl">Nothing to invoice</h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm text-[#85857a]">
+          <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
             Every logged hour and furniture item on this project has already
             been invoiced.
           </p>
           <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href={`/projects/${project.id}/log`}
-              className={cn(
-                buttonVariants({ variant: 'outline' }),
-                'h-10 rounded-xl px-4'
-              )}
+              className={cn(buttonVariants({ variant: 'outline' }), 'h-10')}
             >
               Log work
             </Link>
             <Link
               href={`/projects/${project.id}/invoices`}
-              className={cn(
-                buttonVariants(),
-                'h-10 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
-              )}
+              className={cn(buttonVariants(), 'h-10')}
             >
               Invoice history
             </Link>
@@ -131,11 +139,17 @@ export function InvoiceWorkspace({
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-[1380px] flex-1 flex-col">
       <div className="shrink-0 lg:hidden">
-        <InvoiceMobileTabs value={tab} onChange={setTab} />
+        <SegmentedTabs
+          ariaLabel="Invoice workspace"
+          idPrefix="invoice"
+          value={tab}
+          items={TABS}
+          onChange={setTab}
+        />
       </div>
 
       {error && (
-        <div className="mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-4 py-2.5 text-sm text-[#a9573d] sm:flex-row sm:items-center sm:justify-between">
+        <Alert className="mt-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
           <button
             type="button"
@@ -145,7 +159,7 @@ export function InvoiceWorkspace({
           >
             Try again
           </button>
-        </div>
+        </Alert>
       )}
 
       <div className="mt-3 grid min-h-0 flex-1 gap-4 pb-3 lg:mt-0 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
@@ -191,15 +205,15 @@ export function InvoiceWorkspace({
       </div>
 
       {lineItems.length === 0 && (
-        <p className="shrink-0 pb-2 text-center text-sm text-[#85857a]">
+        <p className="shrink-0 pb-2 text-center text-sm text-muted-foreground">
           Select at least one item to generate an invoice.
         </p>
       )}
 
-      <div className="shrink-0 border-t border-[#deddd5] bg-[#f7f6f2] pt-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-border bg-background pt-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-[#99998e]">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
               Included
             </p>
             <p className="text-sm font-medium">
@@ -211,7 +225,8 @@ export function InvoiceWorkspace({
             type="button"
             onClick={handleGenerate}
             disabled={generate.isPending || lineItems.length === 0}
-            className="h-11 w-full rounded-xl bg-[#bd765b] px-5 text-white hover:bg-[#a9573d] sm:w-auto"
+            size="lg"
+            className="w-full sm:w-auto"
           >
             {generate.isPending ? 'Generating...' : 'Generate invoice'}
           </Button>

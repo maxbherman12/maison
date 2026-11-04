@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Timer, Package, CreditCard, Check, ArrowRight } from 'lucide-react';
 import type { Project, AddFurnitureInput } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import { useLogHours, useAddFurniture } from '@/lib/query/projects';
 import { LogHoursForm } from './forms/LogHoursForm';
 import { AddFurnitureForm } from './forms/AddFurnitureForm';
@@ -94,15 +95,17 @@ export function ProjectLog({ project }: ProjectLogProps) {
               <span
                 className={`flex size-7 items-center justify-center rounded-full text-xs font-medium ${
                   isDone || isCurrent
-                    ? 'bg-[#bd765b] text-white'
-                    : 'bg-[#e8e5dc] text-[#85857a]'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
                 {isDone ? <Check className="size-3.5" /> : stepItem.number}
               </span>
               <span
                 className={`text-xs ${
-                  isCurrent ? 'font-medium text-[#292923]' : 'text-[#99998e]'
+                  isCurrent
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 {stepItem.label}
@@ -112,35 +115,31 @@ export function ProjectLog({ project }: ProjectLogProps) {
         })}
       </ol>
 
-      {error && (
-        <div className="mt-8 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-5 py-4 text-sm text-[#a9573d]">
-          {error}
-        </div>
-      )}
+      {error && <Alert className="mt-8">{error}</Alert>}
 
       {step === 1 && (
         <>
           <h1 className="mt-6 font-serif text-4xl">What would you like to log?</h1>
-          <p className="mt-2 text-sm text-[#85857a]">
+          <p className="mt-2 text-sm text-muted-foreground">
             Tap an option to add it to <strong>{project.project}</strong>.
           </p>
           <div className="mt-7 grid gap-3">
             <LogTypeCard
-              icon={<Timer className="size-5 text-[#bd765b]" />}
+              icon={<Timer className="size-5 text-primary" />}
               title="Hours"
               text="Time spent on this project"
               active={type === 'hours'}
               onSelect={() => selectType('hours')}
             />
             <LogTypeCard
-              icon={<Package className="size-5 text-[#bd765b]" />}
+              icon={<Package className="size-5 text-primary" />}
               title="Furniture"
               text="Purchases and trade pricing"
               active={type === 'furniture'}
               onSelect={() => selectType('furniture')}
             />
             <LogTypeCard
-              icon={<CreditCard className="size-5 text-[#bd765b]" />}
+              icon={<CreditCard className="size-5 text-primary" />}
               title="Custom charge"
               text="One-time expense"
               active={type === 'custom'}
@@ -180,17 +179,18 @@ export function ProjectLog({ project }: ProjectLogProps) {
       {step === 3 && (
         <div className="animate-in fade-in slide-in-from-right-3 duration-300">
           <h1 className="mt-6 font-serif text-4xl">Saved</h1>
-          <p className="mt-2 text-sm text-[#85857a]">
+          <p className="mt-2 text-sm text-muted-foreground">
             The entry has been added to <strong>{project.project}</strong>.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button variant="outline" onClick={startOver} className="w-full rounded-xl sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={startOver}
+              className="w-full sm:w-auto"
+            >
               Log another
             </Button>
-            <Button
-              onClick={backToProject}
-              className="w-full rounded-xl bg-[#bd765b] text-white sm:w-auto"
-            >
+            <Button onClick={backToProject} className="w-full sm:w-auto">
               Back to project
             </Button>
           </div>
@@ -220,21 +220,21 @@ function LogTypeCard({
       aria-pressed={active}
       className={`flex items-center justify-between gap-3 rounded-xl border p-5 text-left transition-colors ${
         active
-          ? 'border-[#bd765b] bg-[#fbfaf7]'
-          : 'border-[#deddd5] bg-[#fbfaf7] hover:bg-[#f1e6df]'
+          ? 'border-primary bg-secondary'
+          : 'border-border bg-secondary hover:bg-accent'
       }`}
     >
       <span className="flex items-center gap-3">
         {icon}
         <span>
           <span className="block font-serif text-xl">{title}</span>
-          <span className="block text-sm text-[#85857a]">{text}</span>
+          <span className="block text-sm text-muted-foreground">{text}</span>
         </span>
       </span>
       {active ? (
-        <Check className="size-5 shrink-0 text-[#bd765b]" />
+        <Check className="size-5 shrink-0 text-primary" />
       ) : (
-        <ArrowRight className="size-5 shrink-0 text-[#99998e]" />
+        <ArrowRight className="size-5 shrink-0 text-muted-foreground" />
       )}
     </button>
   );

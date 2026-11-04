@@ -5,6 +5,7 @@ import type { BillableRow } from '@/lib/billing';
 import { billableRowKey } from '@/lib/billing';
 import { formatMoney } from '@/lib/types';
 import { formatDate } from '@/lib/format-date';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface InvoiceItemSidebarProps {
@@ -33,29 +34,29 @@ export function InvoiceItemSidebar({
   const furnitureRows = rows.filter((row) => row.source === 'furniture');
 
   return (
-    <div className="rounded-3xl border border-[#deddd5] bg-[#fbfaf7] p-4 sm:p-5">
+    <div className="rounded-3xl border border-border bg-secondary p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-serif text-2xl">Items</h2>
-          <p className="mt-1 text-sm text-[#85857a]">
+          <p className="mt-1 text-sm text-muted-foreground">
             {includedCount} of {rows.length} included
           </p>
         </div>
         <p className="font-serif text-xl tabular-nums">{formatMoney(total)}</p>
       </div>
 
-      <div className="mt-3 flex items-center gap-4 text-xs font-medium text-[#bd765b]">
+      <div className="mt-3 flex items-center gap-4 text-xs font-medium text-primary">
         <button
           type="button"
           onClick={onSelectAll}
-          className="transition-colors hover:text-[#a9573d] hover:underline"
+          className="transition-colors hover:text-accent-foreground hover:underline"
         >
           Select all
         </button>
         <button
           type="button"
           onClick={onClearAll}
-          className="transition-colors hover:text-[#a9573d] hover:underline"
+          className="transition-colors hover:text-accent-foreground hover:underline"
         >
           Clear all
         </button>
@@ -100,7 +101,7 @@ function ItemGroup({
 }) {
   return (
     <section aria-label={`${title} items`}>
-      <h3 className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#99998e]">
+      <h3 className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
         {title}
       </h3>
       <ul className="space-y-2">
@@ -138,8 +139,8 @@ function ItemRow({
   return (
     <li
       className={cn(
-        'rounded-2xl border bg-[#fffefa] p-3 transition-colors',
-        included ? 'border-[#deddd5]' : 'border-[#e9e7df] opacity-70'
+        'rounded-2xl border bg-card p-3 transition-colors',
+        included ? 'border-border' : 'border-border/60 opacity-70'
       )}
     >
       <div className="flex items-start gap-3">
@@ -148,18 +149,18 @@ function ItemRow({
           type="checkbox"
           checked={included}
           onChange={onToggle}
-          className="mt-0.5 size-5 shrink-0 accent-[#bd765b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bd765b]/40 focus-visible:ring-offset-2"
+          className="mt-0.5 size-5 shrink-0 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2"
         />
         <div className="min-w-0 flex-1">
           <label htmlFor={checkboxId} className="block cursor-pointer">
-            <span className="inline-flex items-center rounded-full bg-[#ece9e0] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[#7a6a4f]">
+            <Badge className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]">
               {row.type}
-            </span>
-            <span className="mt-1 block truncate text-sm font-medium text-[#292923]">
+            </Badge>
+            <span className="mt-1 block truncate text-sm font-medium text-foreground">
               {row.description}
             </span>
           </label>
-          <p className="mt-0.5 truncate text-xs text-[#85857a]">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {detail.filter(Boolean).join(' · ')}
           </p>
         </div>
@@ -173,7 +174,7 @@ function ItemRow({
               onClick={onEdit}
               aria-label={`Edit ${row.description}`}
               title="Edit item"
-              className="flex size-11 items-center justify-center rounded-full border border-[#deddd5] text-[#bd765b] transition-colors hover:bg-[#f1e6df]"
+              className="flex size-11 items-center justify-center rounded-full border border-border text-primary transition-colors hover:bg-accent"
             >
               <Pencil className="size-4" />
             </button>
@@ -183,7 +184,7 @@ function ItemRow({
               disabled={!included}
               aria-label={`Remove ${row.description} from this invoice`}
               title="Remove from invoice"
-              className="flex size-11 items-center justify-center rounded-full border border-[#deddd5] text-[#85857a] transition-colors hover:bg-[#f1efe8] hover:text-[#292923] disabled:pointer-events-none disabled:opacity-35"
+              className="flex size-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
             >
               <X className="size-4" />
             </button>

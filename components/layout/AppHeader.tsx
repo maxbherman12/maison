@@ -23,13 +23,13 @@ export function AppHeader({
   actions,
 }: AppHeaderProps) {
   return (
-    <header className="shrink-0 border-b border-[#deddd5] bg-[#f7f6f2] pt-[env(safe-area-inset-top)]">
+    <header className="shrink-0 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           {back && (
             <Link
               href={back.href}
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#bd765b] transition-colors hover:underline"
+              className="inline-flex shrink-0 items-center gap-1.5 text-sm text-primary transition-colors hover:underline"
             >
               <ArrowLeft className="size-3.5" aria-hidden="true" />
               <span className="truncate">{back.label}</span>
@@ -39,7 +39,7 @@ export function AppHeader({
           {brand && (
             <Link
               href="/projects"
-              className="font-serif text-2xl tracking-tight transition-colors hover:text-[#bd765b]"
+              className="font-serif text-2xl tracking-tight transition-colors hover:text-primary"
             >
               Maison
             </Link>
@@ -54,7 +54,7 @@ export function AppHeader({
 
         <div className="flex min-w-0 shrink-0 items-center gap-3">
           {context && (
-            <span className="hidden max-w-[42ch] truncate text-sm text-[#99998e] sm:block">
+            <span className="hidden max-w-[42ch] truncate text-sm text-muted-foreground sm:block">
               {context}
             </span>
           )}

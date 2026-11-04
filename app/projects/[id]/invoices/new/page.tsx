@@ -26,7 +26,7 @@ export default async function NewInvoicePage({
       actions={
         <Link
           href={`/projects/${project.id}/invoices`}
-          className="text-sm text-[#bd765b] hover:underline"
+          className="text-sm text-primary hover:underline"
         >
           History
         </Link>

@@ -19,38 +19,57 @@ import type {
 import { ChevronRight } from 'lucide-react';
 import { formatMoney } from '@/lib/types';
 import type { BillableRow } from '@/lib/billing';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const maisonTheme = themeQuartz.withParams({
-  accentColor: '#bd765b',
-  backgroundColor: '#fbfaf7',
-  foregroundColor: '#292923',
-  textColor: '#292923',
-  borderColor: '#deddd5',
-  borderWidth: 1,
-  borderRadius: 8,
-  chromeBackgroundColor: '#f1e6df',
-  headerBackgroundColor: '#f1e6df',
-  headerTextColor: '#6b564a',
-  headerFontSize: 11,
-  headerFontWeight: 600,
-  cellTextColor: '#292923',
-  cellFontSize: 14,
-  fontFamily: ['ui-sans-serif', 'system-ui', 'sans-serif'],
-  fontSize: 14,
-  rowHoverColor: 'rgba(189, 118, 91, 0.08)',
-  selectedRowBackgroundColor: 'rgba(189, 118, 91, 0.14)',
-  oddRowBackgroundColor: 'rgba(41, 41, 35, 0.02)',
-  rowHeight: 52,
-  spacing: 6,
-  wrapperBorder: { color: '#deddd5', width: 1, style: 'solid' },
-  wrapperBorderRadius: 16,
-  pinnedRowBackgroundColor: '#f1e6df',
-  pinnedRowTextColor: '#292923',
-  pinnedRowFontWeight: 600,
-  pinnedRowBorder: { color: '#deddd5', width: 1, style: 'solid' },
-});
+/**
+ * AG Grid needs concrete colour strings, so read the theme variables the grid
+ * is rendered under. Fallbacks keep the grid usable if called before styles
+ * resolve. Keeping this tied to CSS variables prevents the grid from drifting
+ * away from the rest of the app.
+ */
+function themeColor(name: string, fallback: string) {
+  if (typeof window === 'undefined') return fallback;
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+    fallback
+  );
+}
+
+function createMaisonTheme() {
+  const border = themeColor('--border', '#deddd5');
+
+  return themeQuartz.withParams({
+    accentColor: themeColor('--primary', '#bd765b'),
+    backgroundColor: themeColor('--card', '#fffefa'),
+    foregroundColor: themeColor('--foreground', '#292923'),
+    textColor: themeColor('--foreground', '#292923'),
+    borderColor: border,
+    borderWidth: 1,
+    borderRadius: 8,
+    chromeBackgroundColor: themeColor('--muted', '#ece9e0'),
+    headerBackgroundColor: themeColor('--accent', '#f1e6df'),
+    headerTextColor: themeColor('--tone-neutral-fg', '#6b564a'),
+    headerFontSize: 11,
+    headerFontWeight: 600,
+    cellTextColor: themeColor('--foreground', '#292923'),
+    cellFontSize: 14,
+    fontFamily: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+    fontSize: 14,
+    rowHoverColor: 'rgba(189, 118, 91, 0.08)',
+    selectedRowBackgroundColor: 'rgba(189, 118, 91, 0.14)',
+    oddRowBackgroundColor: 'rgba(41, 41, 35, 0.02)',
+    rowHeight: 52,
+    spacing: 6,
+    wrapperBorder: { color: border, width: 1, style: 'solid' },
+    wrapperBorderRadius: 16,
+    pinnedRowBackgroundColor: themeColor('--accent', '#f1e6df'),
+    pinnedRowTextColor: themeColor('--foreground', '#292923'),
+    pinnedRowFontWeight: 600,
+    pinnedRowBorder: { color: border, width: 1, style: 'solid' },
+  });
+}
 
 // The grid is sized to its rows so a project with three pending items does not
 // get a wall of empty space, while a long list still scrolls inside the grid.
@@ -77,6 +96,7 @@ export function ProjectItemsGridInner({
   fill = false,
 }: ProjectItemsGridInnerProps) {
   const isCompact = useMediaQuery('(max-width: 767px)');
+  const gridTheme = useMemo(() => createMaisonTheme(), []);
   const [pinnedBottomRowData, setPinnedBottomRowData] = useState<BillableRow[]>([]);
   const lastTotal = useRef<number | null>(null);
 
@@ -118,7 +138,7 @@ export function ProjectItemsGridInner({
         sortable: true,
         filter: 'agTextColumnFilter',
         cellDataType: 'text',
-        cellClass: 'text-[#85857a]',
+        cellClass: 'text-muted-foreground',
         hide: isCompact,
       },
       {
@@ -143,7 +163,7 @@ export function ProjectItemsGridInner({
         filter: 'agNumberColumnFilter',
         type: 'numericColumn',
         cellDataType: 'number',
-        cellClass: 'text-[#85857a]',
+        cellClass: 'text-muted-foreground',
         valueFormatter: ({ value }: { value: number | null }) =>
           value == null ? '—' : String(value),
         hide: isCompact,
@@ -258,7 +278,7 @@ export function ProjectItemsGridInner({
       style={{ height: gridHeight, maxHeight: fill ? '100%' : undefined }}
     >
       <AgGridReact<BillableRow>
-        theme={maisonTheme}
+        theme={gridTheme}
         context={context}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
@@ -292,18 +312,9 @@ function searchableText(row: BillableRow | undefined): string {
 function TypeCell({ value }: ICellRendererParams<BillableRow, string>) {
   if (!value) return null;
 
-  const isHours = value === 'Hours';
   return (
     <div className="absolute inset-0 flex items-center">
-      <span
-        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium leading-tight tracking-wide ${
-          isHours
-            ? 'bg-[#dbe1d4] text-[#5b6753]'
-            : 'bg-[#f1e6df] text-[#a9573d]'
-        }`}
-      >
-        {value}
-      </span>
+      <Badge tone={value === 'Hours' ? 'success' : 'brand'}>{value}</Badge>
     </div>
   );
 }
@@ -325,11 +336,11 @@ function DescriptionCell({
 
   return (
     <div className="absolute inset-0 flex flex-col justify-center">
-      <span className="font-medium leading-tight text-[#292923]">
+      <span className="font-medium leading-tight text-foreground">
         {data.description}
       </span>
       {isCompact && subLine && (
-        <span className="mt-0.5 text-xs leading-tight text-[#85857a]">
+        <span className="mt-0.5 text-xs leading-tight text-muted-foreground">
           {subLine}
         </span>
       )}
@@ -337,17 +348,17 @@ function DescriptionCell({
   );
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  Pending: 'bg-[#f1e6df] text-[#a9573d]',
-  Ordered: 'bg-[#e6e1d3] text-[#7a6a4f]',
-  'In transit': 'bg-[#dde3e6] text-[#4f6068]',
-  Delivered: 'bg-[#dbe1d4] text-[#5b6753]',
+const STATUS_TONES: Record<string, BadgeTone> = {
+  Pending: 'brand',
+  Ordered: 'warning',
+  'In transit': 'info',
+  Delivered: 'success',
 };
 
 function StatusCell({ value }: ICellRendererParams<BillableRow, string | null>) {
   if (!value) {
     return (
-      <div className="absolute inset-0 flex items-center text-[#b3b2a6]">
+      <div className="absolute inset-0 flex items-center text-muted-foreground/70">
         —
       </div>
     );
@@ -355,13 +366,7 @@ function StatusCell({ value }: ICellRendererParams<BillableRow, string | null>) 
 
   return (
     <div className="absolute inset-0 flex items-center">
-      <span
-        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium leading-tight ${
-          STATUS_STYLES[value] ?? 'bg-[#ece9e0] text-[#85857a]'
-        }`}
-      >
-        {value}
-      </span>
+      <Badge tone={STATUS_TONES[value] ?? 'neutral'}>{value}</Badge>
     </div>
   );
 }
@@ -384,7 +389,7 @@ function OpenCell({
         }}
         aria-label={`Open ${data.description}`}
         title="Open item"
-        className="flex size-9 items-center justify-center rounded-full text-[#99998e] transition-colors hover:bg-[#f1e6df] hover:text-[#bd765b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bd765b]/40"
+        className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <ChevronRight className="size-4" />
       </button>

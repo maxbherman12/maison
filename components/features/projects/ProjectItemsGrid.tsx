@@ -16,7 +16,7 @@ const ProjectItemsGridInner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-full min-h-48 w-full animate-pulse rounded-2xl border border-[#deddd5] bg-[#fbfaf7]" />
+      <div className="h-full min-h-48 w-full animate-pulse rounded-2xl border border-border bg-secondary" />
     ),
   }
 );
@@ -43,11 +43,11 @@ export function ProjectItemsGrid({
         className={cn(
           fill
             ? 'flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center'
-            : 'rounded-2xl border border-dashed border-[#deddd5] bg-[#fbfaf7] p-8 text-center'
+            : 'rounded-2xl border border-dashed border-border bg-secondary p-8 text-center'
         )}
       >
         <p className="font-serif text-xl">Nothing pending</p>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-[#85857a]">
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
           Every logged hour and furniture item on this project has been
           invoiced. Log more work to see it here.
         </p>
@@ -58,8 +58,8 @@ export function ProjectItemsGrid({
   return (
     <div className={cn(fill && 'flex min-h-0 flex-1 flex-col')}>
       <div className="mb-3 flex items-center justify-end">
-        <label className="flex h-10 w-full items-center gap-2 rounded-xl border border-[#deddd5] bg-[#fbfaf7] px-3 focus-within:border-[#bd765b] sm:w-64">
-          <Search className="size-4 shrink-0 text-[#99998e]" />
+        <label className="flex h-10 w-full items-center gap-2 rounded-xl border border-border bg-secondary px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-64">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
           <span className="sr-only">Search pending items</span>
           <input
             type="search"
@@ -67,14 +67,14 @@ export function ProjectItemsGrid({
             onChange={(event) => setQuickFilter(event.target.value)}
             placeholder="Search items"
             // Hide the native clear button — the one below does the job.
-            className="w-full bg-transparent text-sm outline-none placeholder:text-[#b3b2a6] [&::-webkit-search-cancel-button]:appearance-none"
+            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70 [&::-webkit-search-cancel-button]:appearance-none"
           />
           {quickFilter && (
             <button
               type="button"
               onClick={() => setQuickFilter('')}
               aria-label="Clear search"
-              className="shrink-0 text-[#99998e] hover:text-[#292923]"
+              className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="size-4" />
             </button>
