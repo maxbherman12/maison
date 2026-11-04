@@ -18,16 +18,17 @@ import { ProjectItemsGrid } from './ProjectItemsGrid';
 interface ProjectSummaryProps {
   project: Project;
   onStatus: () => void;
-  onInvoice: () => void;
 }
 
-export function ProjectSummary({
-  project,
-  onStatus,
-  onInvoice,
-}: ProjectSummaryProps) {
+export function ProjectSummary({ project, onStatus }: ProjectSummaryProps) {
   const [editing, setEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const hasPendingItems =
+    project.hours.some((entry) => entry.invoiceId === null) ||
+    project.furniture.some((item) => item.invoiceId === null);
+  const invoiceHref = hasPendingItems
+    ? `/projects/${project.id}/invoices/new`
+    : `/projects/${project.id}/invoices`;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -105,7 +106,7 @@ export function ProjectSummary({
               <ActionButton
                 icon={<FileText className="size-5" />}
                 title="Invoice"
-                onClick={onInvoice}
+                href={invoiceHref}
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 # Billing data foundation (roadmap Phase 2)
 
-**Status:** Approved for implementation
+**Status:** Implemented and merged into `main` via `5b82633` (2026-11-01); implementation in `335277b` and `26c5097`. Re-verified 2026-11-03: `npx tsc --noEmit` and `pnpm build` pass.
 
 **Date:** 2026-10-27
 

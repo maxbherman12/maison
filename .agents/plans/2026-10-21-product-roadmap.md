@@ -1,8 +1,10 @@
 # Maison product roadmap — phased plan
 
-**Status:** Draft for review
+**Status:** In progress — Phases 1–2 shipped on `main`; Phase 3 is in review
 
 **Date:** 2026-10-21
+
+**Last updated:** 2026-11-03
 
 **Source:** Feature list supplied by Max (reproduced in the appendix)
 
@@ -12,9 +14,23 @@ This document is a plan, not implementation approval. Each phase below is intend
 
 ---
 
+## Current status
+
+**As of 2026-11-03:** Phases 1 and 2 are implemented and merged into `main`. Phase 3 (invoice workspace) is implemented on `feature/invoice-workspace` and is awaiting review — it has not been merged. Phases 4–6 have not started; Phase 7 remains unscheduled.
+
+- **Phase 1 — native app shell (done, `66459a3`, 2026-10-22):** root layout owns the viewport, one scrolling `<main>`, shared `AppShell`/`AppHeader`/`ProjectShell`, and `dvh`/safe-area handling in sheets. All existing routes render through the shell.
+- **Phase 2 — billing data foundation (done, merged via `5b82633`, 2026-11-01; work in `335277b`, `26c5097`):** persisted `invoice_line_items` snapshots, invoice `sentAt`/`dueAt`/`paidAt` with derived status, refs-only generation in one transaction with blob cleanup, invoice list/detail/PDF APIs, `send`/`pay` actions, full hour-entry and furniture editing, and matching query hooks. The legacy `ProjectInvoice` view posts source refs and remains the Phase 3 fallback.
+- **Phase 3 — invoice workspace (in review):** implemented on `feature/invoice-workspace`; adds the invoice index, composer with preview/sidebar/mobile tabs, shared edit sheet, invoice detail with send/pay actions, and the project-detail invoice link. See [2026-11-03-invoice-workspace.md](./2026-11-03-invoice-workspace.md).
+- **Foundation outside the phase sequence:** `BlobStore` port with local-filesystem and Vercel drivers (`d562a2b`, 2026-10-25), so local invoice generation no longer requires Vercel Blob. This supports the existing PDF route; it is not a separate roadmap phase.
+- **Verification (2026-11-03):** `npx tsc --noEmit` and `pnpm build` both pass on `main` and on the Phase 3 branch. Phase 4's project-detail cleanup and the analytics/notification phases do not exist yet.
+
+The Phase 2 API and hooks were already in place, so Phase 3 was primarily UI work: the invoice routes, preview/composer/sidebar, shared item edit sheet, invoice detail, and status badge.
+
+---
+
 ## 1. Context and goal
 
-Maison already has a working project/billing loop: projects contain hour entries and furniture items; uninvoiced rows feed a pending-items grid; generating an invoice writes a PDF to Vercel Blob and marks the source rows as invoiced.
+Maison already has a working project/billing loop: projects contain hour entries and furniture items; uninvoiced rows feed a pending-items grid; generating an invoice writes a PDF through the blob store (Vercel in production, local filesystem for development) and marks the source rows as invoiced.
 
 The requested changes are not isolated tweaks. They move the app from a collection of stacked project views toward:
 
@@ -24,14 +40,14 @@ The requested changes are not isolated tweaks. They move the app from a collecti
 4. A simplified project detail page focused on pending work and invoice history.
 5. Reminders that surface work that should have been invoiced, or invoices that should have been paid.
 
-The main architectural gap is invoicing. Today an invoice stores only a total and relies on the source rows’ `invoiceId` to describe what was billed. That is enough to generate a PDF once, but not enough to:
+The main architectural gap was invoicing. At the time of planning, an invoice stored only a total and relied on the source rows’ `invoiceId` to describe what was billed. That was enough to generate a PDF once, but not enough to:
 
 - Show an invoice’s line items after the source entry is edited.
 - Let a user include/exclude pending items before generating.
 - Track “sent” and “paid” timestamps for reminders.
 - Show a trustworthy invoice history.
 
-Phase 2 closes that gap before the UI phases depend on it.
+Phase 2 has since closed that gap; the UI phases build on the resulting API.
 
 ---
 
@@ -67,21 +83,23 @@ The app currently has no auth or user model. Settings, dismissals, and alert thr
 
 ## 3. Phase overview
 
-| Phase | Outcome | Depends on | Rough size |
-| --- | --- | --- | --- |
-| 1 | Native app shell; no document scroll; shared headers | — | M |
-| 2 | Invoice line items, status timestamps, editable entries, invoice APIs | 1 (soft) | L |
-| 3 | Invoice workspace: preview + item sidebar + mobile tabs; invoice detail | 2 | L |
-| 4 | Simplified project detail: no stat cards/icons, row-click sheet, invoice grid | 2, 3 | M |
-| 5 | Homepage cumulative revenue chart + list cleanup | 2 | M |
-| 6 | In-app invoice cadence and overdue reminders | 2, 3 | M |
-| 7 | Future bets: room ideation, scratchpad, task board | Separate plans | — |
+| Phase | Outcome | Depends on | Rough size | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Native app shell; no document scroll; shared headers | — | M | **Done** — `66459a3` |
+| 2 | Invoice line items, status timestamps, editable entries, invoice APIs | 1 (soft) | L | **Done** — `5b82633` |
+| 3 | Invoice workspace: preview + item sidebar + mobile tabs; invoice detail | 2 | L | **In review** — `feature/invoice-workspace` |
+| 4 | Simplified project detail: no stat cards/icons, row-click sheet, invoice grid | 2, 3 | M | Not started |
+| 5 | Homepage cumulative revenue chart + list cleanup | 2 | M | Not started; can start independently |
+| 6 | In-app invoice cadence and overdue reminders | 2, 3 | M | Not started |
+| 7 | Future bets: room ideation, scratchpad, task board | Separate plans | — | Unscheduled |
 
 Recommended order: **1 → 2 → 3 → 4 → 5 → 6**. Phases 4 and 5 both depend on Phase 2; they can swap order if the homepage is more valuable sooner. Phase 6 should come after invoice detail exists, because “mark sent” is part of the reminder loop.
 
 ---
 
 ## 4. Phase 1 — Native app shell
+
+**Status:** Done — merged to `main` in `66459a3` (2026-10-22). Re-verified on 2026-11-03 with `npx tsc --noEmit` and `pnpm build`.
 
 ### Problem
 
@@ -148,6 +166,8 @@ Introduce one app shell and one scroll region.
 ---
 
 ## 5. Phase 2 — Billing data foundation
+
+**Status:** Done — merged to `main` via `5b82633` (2026-11-01); implementation in `335277b` and `26c5097`. Re-verified on 2026-11-03 with `npx tsc --noEmit` and `pnpm build`.
 
 ### Problem
 
@@ -353,6 +373,8 @@ Invalidation rules:
 
 ## 6. Phase 3 — Invoice workspace
 
+**Status:** In review — implemented on `feature/invoice-workspace`; not merged. The branch adds the three routes, composer/preview/sidebar, shared edit sheet, invoice detail, and project-detail wiring described in [2026-11-03-invoice-workspace.md](./2026-11-03-invoice-workspace.md).
+
 ### Problem
 
 Invoicing is currently a client-side view inside project detail. It shows only a total and item count, cannot preview the invoice, cannot exclude items, cannot edit entries, and has no URL. On mobile it is a long stack with no focused action.
@@ -479,6 +501,8 @@ Mobile tabs:
 
 ## 7. Phase 4 — Project detail simplification
 
+**Status:** Not started. Phase 2 is done; this still needs Phase 3 for the shared `EditBillableItemSheet` and invoice links.
+
 ### Problem
 
 The project detail page has three summary cards, a strip of furniture icons, a hidden furniture modal, and an invoice view embedded in client state. The furniture icons duplicate the furniture board and are not an efficient way to inspect items. The invoice history is not visible at all.
@@ -549,6 +573,8 @@ The project detail page has three summary cards, a strip of furniture icons, a h
 ---
 
 ## 8. Phase 5 — Homepage revenue dashboard
+
+**Status:** Not started. Phase 2 is done, so this can start without waiting for Phase 3.
 
 ### Problem
 
@@ -640,6 +666,8 @@ Document these definitions in the chart’s tooltip/help text so “billed” is
 ---
 
 ## 9. Phase 6 — Invoice cadence and overdue reminders
+
+**Status:** Not started. Waits on Phase 3, because “mark sent/paid” lives in invoice detail.
 
 ### Problem
 
@@ -748,7 +776,9 @@ Thresholds:
 
 ## 10. Phase 7 — Future bets (unscheduled)
 
-These are captured so they are not lost, but they should not be bundled into the phases above. Each needs its own plan, estimate, and approval.
+**Status:** Unscheduled — each bet needs its own plan, estimate, and approval.
+
+These are captured so they are not lost, but they should not be bundled into the phases above.
 
 ### 7A. Nano Banana room ideation
 
@@ -795,16 +825,18 @@ These are captured so they are not lost, but they should not be bundled into the
 
 ## 11. Cross-cutting architecture
 
-### 11.1 Target data model additions
+### 11.1 Data model additions
+
+The Phase 2 pieces are applied in `lib/db/schema.ts` and migration `0002_heavy_mercury.sql`. `notification_dismissals` is still planned for Phase 6.
 
 ```
 invoices
-  + sent_at
-  + due_at
-  + paid_at
+  + sent_at       (implemented)
+  + due_at        (implemented)
+  + paid_at       (implemented)
   (paid remains)
 
-invoice_line_items
+invoice_line_items (implemented)
   id
   invoice_id      -> invoices.id (cascade)
   source          -> 'hours' | 'furniture'
@@ -813,7 +845,7 @@ invoice_line_items
   amount          -> snapshot
   created_at
 
-notification_dismissals
+notification_dismissals (Phase 6)
   key             -> stable alert key
   dismissed_at
 ```
@@ -822,13 +854,13 @@ Future-only tables (`design_concepts`, `project_notes`, `tasks`) are intentional
 
 ### 11.2 API surface after Phase 6
 
-| Area | Routes |
-| --- | --- |
-| Projects | existing CRUD + `PATCH/DELETE /api/projects/[id]/hours/[hourId]` |
-| Furniture | existing CRUD + full-field `PATCH` |
-| Invoices | `GET/POST /api/invoices`, `GET/PATCH /api/invoices/[id]`, `GET /api/invoices/[id]/pdf` |
-| Analytics | `GET /api/dashboard/revenue` |
-| Notifications | `GET /api/notifications`, `POST /api/notifications/dismiss` |
+| Area | Routes | Status |
+| --- | --- | --- |
+| Projects | existing CRUD + `PATCH/DELETE /api/projects/[id]/hours/[hourId]` | Done (Phase 2) |
+| Furniture | existing CRUD + full-field `PATCH` | Done (Phase 2) |
+| Invoices | `GET/POST /api/invoices`, `GET/PATCH /api/invoices/[id]`, `GET /api/invoices/[id]/pdf` | Done (Phase 2) |
+| Analytics | `GET /api/dashboard/revenue` | Planned (Phase 5) |
+| Notifications | `GET /api/notifications`, `POST /api/notifications/dismiss` | Planned (Phase 6) |
 
 ### 11.3 Layer responsibilities
 
@@ -871,7 +903,7 @@ Database phases additionally require `pnpm db:generate` + `pnpm db:migrate` agai
 
 1. **Notification channel:** Is the first version in-app only, or is email/push required? This plan assumes in-app; email/push is a follow-up.
 2. **“Billed” semantics:** Should the chart’s billed line mean invoices issued or invoices paid? This plan uses issued; a paid series can be added.
-3. **Invoice terms:** Is Net 14 right for `dueAt`, or should it be configurable per project?
+3. **Invoice terms:** Resolved for now — Net 14 is the default and `INVOICE_DUE_DAYS` overrides it app-wide (`lib/invoices/config.ts`). Per-project terms remain deferred.
 4. **Draft invoices:** Is losing an in-progress composer selection on navigation acceptable? The plan assumes yes; persisted drafts are deferred.
 5. **Furniture purchase date:** Should furniture get a real `purchasedAt` field for revenue reporting, rather than using `createdAt`?
 6. **Auth/multi-user:** Are reminders/dismissals app-wide for the foreseeable future? This plan assumes single-user.
