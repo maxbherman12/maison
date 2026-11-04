@@ -92,7 +92,12 @@ No test, lint, or format scripts exist.
 
 - `/` — redirects to `/projects`
 - `/projects` — project list (`ProjectsListClient`), create project via `ProjectOnboard`
-- `/projects/[id]` — project detail (Server Component fetches, passes to `ProjectClient` → sub-views: `ProjectSummary`, `ProjectLog`, `ProjectStatus`, `ProjectInvoice`)
+- `/projects/[id]` — project detail (Server Component fetches project + invoice history, passes to `ProjectClient` → `ProjectSummary` with the pending-items grid and invoice grid)
+- `/projects/[id]/log` — log hours and furniture
+- `/projects/[id]/board` — furniture board
+- `/projects/[id]/invoices` — invoice history
+- `/projects/[id]/invoices/new` — invoice composer
+- `/projects/[id]/invoices/[invoiceId]` — invoice detail
 
 ## Billing model
 
@@ -106,6 +111,7 @@ No test, lint, or format scripts exist.
 - AG Grid Community (`ag-grid-react`, `ag-grid-community`). `components/features/projects/ProjectItemsGrid.tsx` is the wrapper (toolbar + data), `ProjectItemsGridInner.tsx` holds the grid itself and is loaded client-side only via `next/dynamic`.
 - Always set `cellDataType` on columns. AG Grid infers it from the first row's value, so a column starting with a date renders later non-date values as blank.
 - The AG Grid cell is `display: block` with a tall line-height, so cell renderers should use `absolute inset-0 flex items-center` to centre themselves.
+- Pending rows are actionable: row click, Enter/Space, and the pinned Open cell all call `onOpenItem`; the pinned total row is ignored.
 
 ## Styling
 

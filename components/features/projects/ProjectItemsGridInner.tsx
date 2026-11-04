@@ -8,12 +8,15 @@ import {
   themeQuartz,
 } from 'ag-grid-community';
 import type {
+  CellKeyDownEvent,
   ColDef,
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
   ModelUpdatedEvent,
+  RowClickedEvent,
 } from 'ag-grid-community';
+import { ChevronRight } from 'lucide-react';
 import { formatMoney } from '@/lib/types';
 import type { BillableRow } from '@/lib/billing';
 
@@ -62,11 +65,13 @@ interface GridContext {
 interface ProjectItemsGridInnerProps {
   rows: BillableRow[];
   quickFilter: string;
+  onOpenItem: (row: BillableRow) => void;
 }
 
 export function ProjectItemsGridInner({
   rows,
   quickFilter,
+  onOpenItem,
 }: ProjectItemsGridInnerProps) {
   const isCompact = useMediaQuery('(max-width: 767px)');
   const [pinnedBottomRowData, setPinnedBottomRowData] = useState<BillableRow[]>([]);
@@ -155,8 +160,22 @@ export function ProjectItemsGridInner({
         // Keep the money in view while the rest of the row scrolls sideways.
         pinned: 'right',
       },
+      {
+        colId: 'open',
+        headerName: '',
+        width: 52,
+        minWidth: 52,
+        maxWidth: 52,
+        pinned: 'right',
+        sortable: false,
+        filter: false,
+        resizable: false,
+        suppressHeaderMenuButton: true,
+        cellRenderer: OpenCell,
+        cellRendererParams: { onOpen: onOpenItem },
+      },
     ],
-    [isCompact]
+    [isCompact, onOpenItem]
   );
 
   const defaultColDef = useMemo<ColDef<BillableRow>>(
@@ -201,6 +220,30 @@ export function ProjectItemsGridInner({
     [syncTotal]
   );
 
+  const handleRowClicked = useCallback(
+    (event: RowClickedEvent<BillableRow>) => {
+      if (!event.data?.itemId) return;
+      onOpenItem(event.data);
+    },
+    [onOpenItem]
+  );
+
+  const handleCellKeyDown = useCallback(
+    (event: CellKeyDownEvent<BillableRow>) => {
+      const keyboardEvent = event.event as KeyboardEvent | undefined;
+      if (
+        !event.data?.itemId ||
+        (keyboardEvent?.key !== 'Enter' && keyboardEvent?.key !== ' ')
+      ) {
+        return;
+      }
+
+      keyboardEvent.preventDefault();
+      onOpenItem(event.data);
+    },
+    [onOpenItem]
+  );
+
   const gridHeight = Math.min(
     MAX_GRID_HEIGHT,
     rows.length * ROW_HEIGHT + HEADER_HEIGHT + ROW_HEIGHT + 2
@@ -219,6 +262,11 @@ export function ProjectItemsGridInner({
         quickFilterText={quickFilter}
         onModelUpdated={handleModelUpdated}
         onGridReady={handleGridReady}
+        onRowClicked={handleRowClicked}
+        onCellKeyDown={handleCellKeyDown}
+        getRowClass={(params) =>
+          params.data?.itemId ? 'cursor-pointer' : undefined
+        }
         animateRows={false}
         enableCellTextSelection
         tooltipShowDelay={400}
@@ -308,6 +356,32 @@ function StatusCell({ value }: ICellRendererParams<BillableRow, string | null>) 
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+function OpenCell({
+  data,
+  onOpen,
+}: ICellRendererParams<BillableRow> & {
+  onOpen?: (row: BillableRow) => void;
+}) {
+  if (!data?.itemId) return null;
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen?.(data);
+        }}
+        aria-label={`Open ${data.description}`}
+        title="Open item"
+        className="flex size-10 items-center justify-center rounded-full text-[#99998e] transition-colors hover:bg-[#f1e6df] hover:text-[#bd765b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bd765b]/40"
+      >
+        <ChevronRight className="size-4" />
+      </button>
     </div>
   );
 }

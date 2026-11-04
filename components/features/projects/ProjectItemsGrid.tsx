@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Search, X } from 'lucide-react';
 import type { Project } from '@/lib/types';
+import type { BillableRow } from '@/lib/billing';
 import { buildBillableRows } from '@/lib/billing';
 
 // AG Grid touches the DOM as soon as it mounts, so it is loaded client-side
@@ -21,9 +22,13 @@ const ProjectItemsGridInner = dynamic(
 
 interface ProjectItemsGridProps {
   project: Project;
+  onOpenItem: (row: BillableRow) => void;
 }
 
-export function ProjectItemsGrid({ project }: ProjectItemsGridProps) {
+export function ProjectItemsGrid({
+  project,
+  onOpenItem,
+}: ProjectItemsGridProps) {
   const [quickFilter, setQuickFilter] = useState('');
 
   const rows = useMemo(() => buildBillableRows(project), [project]);
@@ -47,7 +52,7 @@ export function ProjectItemsGrid({ project }: ProjectItemsGridProps) {
           <h2 className="font-serif text-2xl">Pending items</h2>
           <p className="mt-1 text-sm text-[#85857a]">
             {rows.length} {rows.length === 1 ? 'item' : 'items'} awaiting
-            invoicing
+            invoicing · open a row to edit
           </p>
         </div>
 
@@ -77,7 +82,11 @@ export function ProjectItemsGrid({ project }: ProjectItemsGridProps) {
         </div>
       </div>
 
-      <ProjectItemsGridInner rows={rows} quickFilter={quickFilter} />
+      <ProjectItemsGridInner
+        rows={rows}
+        quickFilter={quickFilter}
+        onOpenItem={onOpenItem}
+      />
     </div>
   );
 }

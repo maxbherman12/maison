@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { projectService } from '@/lib/services/container';
-import type { Project } from '@/lib/types';
+import { invoiceService, projectService } from '@/lib/services/container';
+import type { Invoice, Project } from '@/lib/types';
 import { ProjectClient } from '@/components/features/projects/ProjectClient';
 import { ProjectShell } from '@/components/layout/ProjectShell';
 
@@ -16,6 +16,8 @@ export default async function ProjectPage({
     notFound();
   }
 
+  const invoices: Invoice[] = await invoiceService.listInvoices(project.id);
+
   return (
     <ProjectShell
       project={project}
@@ -23,7 +25,7 @@ export default async function ProjectPage({
       backLabel="All projects"
       title={project.project}
     >
-      <ProjectClient project={project} />
+      <ProjectClient project={project} invoices={invoices} />
     </ProjectShell>
   );
 }

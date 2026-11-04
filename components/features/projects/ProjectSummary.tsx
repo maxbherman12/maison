@@ -1,34 +1,169 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Pencil,
-  Package,
-  FileText,
-  Truck,
-  Plus,
+  ArrowRight,
+  Check,
   Columns3,
+  FileText,
+  Pencil,
+  Plus,
+  X,
 } from 'lucide-react';
-import type { Project } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { formatMoney } from '@/lib/types';
+import type {
+  FurnitureStatus,
+  Invoice,
+  Project,
+} from '@/lib/types';
+import type { BillableRow } from '@/lib/billing';
+import { buildBillableRows } from '@/lib/billing';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { useInvoices } from '@/lib/query/invoices';
+import {
+  useDeleteFurniture,
+  useUpdateFurnitureStatus,
+  useUpdateProject,
+} from '@/lib/query/projects';
+import { cn } from '@/lib/utils';
+import { FurnitureSheet } from '@/components/features/furniture/FurnitureSheet';
+import { EditBillableItemSheet } from '@/components/features/invoices/EditBillableItemSheet';
+import { InvoicesGrid } from '@/components/features/invoices/InvoicesGrid';
 import { ProjectItemsGrid } from './ProjectItemsGrid';
 
 interface ProjectSummaryProps {
   project: Project;
-  onStatus: () => void;
+  invoices: Invoice[];
 }
 
-export function ProjectSummary({ project, onStatus }: ProjectSummaryProps) {
+interface Notice {
+  tone: 'success' | 'error';
+  text: string;
+}
+
+export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
   const [editing, setEditing] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const hasPendingItems =
-    project.hours.some((entry) => entry.invoiceId === null) ||
-    project.furniture.some((item) => item.invoiceId === null);
+  const [openFurnitureId, setOpenFurnitureId] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState<BillableRow | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  const { data: liveInvoices = invoices } = useInvoices(project.id, invoices);
+  const updateFurnitureStatus = useUpdateFurnitureStatus();
+  const deleteFurniture = useDeleteFurniture();
+
+  const rows = useMemo(() => buildBillableRows(project), [project]);
+  const hasPendingItems = rows.length > 0;
+
+  const openFurniture = openFurnitureId
+    ? project.furniture.find((item) => item.id === openFurnitureId)
+    : undefined;
+
   const invoiceHref = hasPendingItems
     ? `/projects/${project.id}/invoices/new`
     : `/projects/${project.id}/invoices`;
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 2800);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
+    if (
+      openFurnitureId &&
+      !rows.some(
+        (row) =>
+          row.source === 'furniture' && row.itemId === openFurnitureId
+      )
+    ) {
+      setOpenFurnitureId(null);
+    }
+  }, [openFurnitureId, rows]);
+
+  useEffect(() => {
+    if (editingRow && !rows.some((row) => row.id === editingRow.id)) {
+      setEditingRow(null);
+    }
+  }, [editingRow, rows]);
+
+  const openRow = (row: BillableRow) => {
+    if (!row.itemId) return;
+
+    if (row.source === 'furniture') {
+      setEditingRow(null);
+      setOpenFurnitureId(row.itemId);
+      return;
+    }
+
+    setOpenFurnitureId(null);
+    setEditingRow(row);
+  };
+
+  const editOpenFurniture = () => {
+    if (!openFurniture) return;
+
+    const row = rows.find(
+      (candidate) =>
+        candidate.source === 'furniture' &&
+        candidate.itemId === openFurniture.id
+    );
+
+    if (!row) return;
+
+    setOpenFurnitureId(null);
+    setEditingRow(row);
+  };
+
+  const moveFurniture = (status: FurnitureStatus) => {
+    if (!openFurniture) return;
+
+    updateFurnitureStatus.mutate(
+      {
+        projectId: project.id,
+        furnitureId: openFurniture.id,
+        status,
+      },
+      {
+        onSuccess: () => {
+          setOpenFurnitureId(null);
+          setNotice({ tone: 'success', text: `Moved to ${status}` });
+        },
+        onError: (error) => {
+          setNotice({
+            tone: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : "Couldn't move that piece. Please try again.",
+          });
+        },
+      }
+    );
+  };
+
+  const removeFurniture = () => {
+    if (!openFurniture) return;
+    if (!window.confirm('Delete this furniture entry?')) return;
+
+    deleteFurniture.mutate(
+      { projectId: project.id, furnitureId: openFurniture.id },
+      {
+        onSuccess: () => {
+          setOpenFurnitureId(null);
+          setNotice({ tone: 'success', text: 'Furniture entry deleted' });
+        },
+        onError: (error) => {
+          setNotice({
+            tone: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : "Couldn't delete that piece. Please try again.",
+          });
+        },
+      }
+    );
+  };
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -59,39 +194,8 @@ export function ProjectSummary({ project, onStatus }: ProjectSummaryProps) {
         />
       ) : (
         <>
-          <div className="mb-8 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Hours logged" value={project.hours.length} />
-            <StatCard
-              label="Furniture items"
-              value={project.furniture.length}
-            />
-            <StatCard label="Uninvoiced" value={formatMoney(project.outstanding)} />
-          </div>
-
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex -space-x-2">
-              {project.furniture.slice(0, 5).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setSelectedItem(item.id)}
-                  className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[#deddd5] bg-[#fffefa] hover:ring-2 ring-[#bd765b] transition-colors"
-                  aria-label={`View ${item.name}`}
-                >
-                  <Package className="size-4 text-[#85857a]" />
-                  {item.status === 'Pending' && (
-                    <span className="absolute right-0 bottom-0 flex size-3.5 shrink-0 items-center justify-center rounded-full bg-[#bd765b] text-white text-[10px]">
-                      !
-                    </span>
-                  )}
-                </button>
-              ))}
-              {project.furniture.length > 5 && (
-                <button className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#deddd5] bg-[#fffefa] text-sm text-[#85857a]">
-                  +{project.furniture.length - 5}
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:w-[360px]">
+          <div className="mb-6 flex justify-end">
+            <div className="grid w-full grid-cols-3 gap-2 sm:w-[360px]">
               <ActionButton
                 icon={<Plus className="size-5" />}
                 title="Log"
@@ -111,35 +215,91 @@ export function ProjectSummary({ project, onStatus }: ProjectSummaryProps) {
             </div>
           </div>
 
-          <div className="mb-6">
-            <ProjectItemsGrid project={project} />
-          </div>
+          <ProjectItemsGrid project={project} onOpenItem={openRow} />
 
-          {selectedItem && (
-            <div className="fixed inset-0 z-10 flex items-end justify-center bg-[#292923]/25 p-4 sm:items-center">
-              <div className="max-h-sheet w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-[#fffefa] p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))]">
-                {selectedItem && (
-                  <FurnitureItemDetail
-                    item={project.furniture.find((i) => i.id === selectedItem)!}
-                    onClose={() => setSelectedItem(null)}
-                  />
-                )}
+          <section className="mt-10">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="font-serif text-2xl">Invoices</h2>
+                <p className="mt-1 text-sm text-[#85857a]">
+                  Issued invoices for this project.
+                </p>
               </div>
+              <Link
+                href={`/projects/${project.id}/invoices`}
+                className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#bd765b] hover:underline"
+              >
+                All invoices <ArrowRight className="size-3.5" />
+              </Link>
             </div>
-          )}
+
+            <InvoicesGrid
+              invoices={liveInvoices}
+              projectId={project.id}
+              emptyAction={
+                hasPendingItems ? (
+                  <Link
+                    href={`/projects/${project.id}/invoices/new`}
+                    className={cn(
+                      buttonVariants(),
+                      'h-11 rounded-xl bg-[#bd765b] px-4 text-white hover:bg-[#a9573d]'
+                    )}
+                  >
+                    Create invoice
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/projects/${project.id}/log`}
+                    className={cn(
+                      buttonVariants({ variant: 'outline' }),
+                      'h-11 rounded-xl px-4'
+                    )}
+                  >
+                    Log work
+                  </Link>
+                )
+              }
+            />
+          </section>
         </>
       )}
-    </div>
-  );
-}
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl bg-[#ece9e0] px-4 py-4">
-      <span className="block text-[11px] uppercase tracking-[0.1em] text-[#99998e]">
-        {label}
-      </span>
-      <strong className="mt-2 block font-serif text-2xl font-normal">{value}</strong>
+      {openFurniture && (
+        <FurnitureSheet
+          key={openFurniture.id}
+          item={openFurniture}
+          onClose={() => setOpenFurnitureId(null)}
+          onMove={moveFurniture}
+          onDelete={removeFurniture}
+          onEdit={editOpenFurniture}
+        />
+      )}
+
+      {editingRow && (
+        <EditBillableItemSheet
+          project={project}
+          row={editingRow}
+          onClose={() => setEditingRow(null)}
+        />
+      )}
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={cn(
+            'pointer-events-none fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2.5 text-sm text-white shadow-lg',
+            notice.tone === 'error' ? 'bg-[#a9573d]' : 'bg-[#292923]'
+          )}
+        >
+          {notice.tone === 'success' ? (
+            <Check className="size-4" />
+          ) : (
+            <X className="size-4" />
+          )}
+          {notice.text}
+        </div>
+      )}
     </div>
   );
 }
@@ -148,13 +308,11 @@ function ActionButton({
   icon,
   title,
   href,
-  onClick,
   variant = 'default',
 }: {
   icon: React.ReactNode;
   title: string;
-  href?: string;
-  onClick?: () => void;
+  href: string;
   variant?: 'default' | 'primary';
 }) {
   const className = `flex h-12 items-center justify-center gap-2 rounded-xl border px-2 text-sm transition-colors sm:h-11 sm:flex-1 sm:px-3 ${
@@ -163,30 +321,11 @@ function ActionButton({
       : 'border-[#deddd5] bg-[#fbfaf7] text-[#bd765b] hover:border-[#bd765b] hover:bg-[#f1e6df]'
   }`;
 
-  const content = (
-    <>
+  return (
+    <Link href={href} className={className} title={title} aria-label={title}>
       <span className="flex size-8 items-center justify-center">{icon}</span>
       <span className="text-xs font-medium">{title}</span>
-    </>
-  );
-
-  if (href) {
-    return (
-      <Link href={href} className={className} title={title} aria-label={title}>
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className={className}
-    >
-      {content}
-    </button>
+    </Link>
   );
 }
 
@@ -199,10 +338,49 @@ function ProjectEditForm({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const updateProject = useUpdateProject();
   const [client, setClient] = useState(project.client);
   const [name, setName] = useState(project.project);
   const [address, setAddress] = useState(project.address);
   const [rate, setRate] = useState(String(project.hourlyRate));
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = () => {
+    const nextRate = Number(rate);
+
+    if (!client.trim() || !name.trim()) {
+      setError('Client and project names are required.');
+      return;
+    }
+
+    if (!Number.isFinite(nextRate) || nextRate <= 0) {
+      setError('Hourly rate must be greater than zero.');
+      return;
+    }
+
+    setError(null);
+    updateProject.mutate(
+      {
+        id: project.id,
+        patch: {
+          client: client.trim(),
+          project: name.trim(),
+          address: address.trim(),
+          hourlyRate: nextRate,
+        },
+      },
+      {
+        onSuccess: onSave,
+        onError: (mutationError) => {
+          setError(
+            mutationError instanceof Error
+              ? mutationError.message
+              : 'Unable to save project details.'
+          );
+        },
+      }
+    );
+  };
 
   return (
     <div className="mt-7 rounded-2xl border border-[#deddd5] bg-[#fbfaf7] p-5">
@@ -212,16 +390,24 @@ function ProjectEditForm({
         <Field label="Address" value={address} onChange={setAddress} />
         <Field label="Hourly rate" value={rate} prefix="$" onChange={setRate} />
       </div>
+      {error && (
+        <p className="mt-4 rounded-xl border border-[#c98973] bg-[#fbf0eb] px-4 py-3 text-sm text-[#a9573d]">
+          {error}
+        </p>
+      )}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <Button
-          onClick={() => {
-            onSave();
-          }}
+          onClick={handleSave}
+          disabled={updateProject.isPending}
           className="w-full rounded-xl bg-[#bd765b] text-white sm:w-auto"
         >
-          Save details
+          {updateProject.isPending ? 'Saving...' : 'Save details'}
         </Button>
-        <Button variant="outline" onClick={onCancel}>
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={updateProject.isPending}
+        >
           Cancel
         </Button>
       </div>
@@ -254,52 +440,5 @@ function Field({
         />
       </span>
     </label>
-  );
-}
-
-function FurnitureItemDetail({
-  item,
-  onClose,
-}: {
-  item: Project['furniture'][number];
-  onClose: () => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-serif text-3xl">Furniture details</h2>
-        <button onClick={onClose} aria-label="Close">
-          <Truck className="size-5" />
-        </button>
-      </div>
-      <div className="grid gap-4">
-        <Field label="Item name" value={item.name} onChange={() => {}} />
-        <Field label="Vendor" value={item.vendor} onChange={() => {}} />
-        <Field label="Link" value={item.link} onChange={() => {}} />
-        <Field label="Tags" value={item.tags.join(', ')} onChange={() => {}} />
-        <Field label="Notes" value={item.notes} onChange={() => {}} />
-        <label className="block">
-          <span className="mb-2 block text-xs uppercase tracking-[0.1em] text-[#85857a]">
-            Status
-          </span>
-          <select
-            value={item.status}
-            className="h-11 w-full rounded-xl border border-[#deddd5] bg-[#fffefa] px-3 text-sm"
-            onChange={() => {}}
-          >
-            <option>Pending</option>
-            <option>Ordered</option>
-            <option>In transit</option>
-            <option>Delivered</option>
-          </select>
-        </label>
-        <div className="flex flex-col gap-3 mt-4">
-          <Button className="rounded-xl bg-[#bd765b] text-white">Save changes</Button>
-          <Button variant="outline" className="rounded-xl border-[#c98973] text-[#a9573d]">
-            Delete furniture entry
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }

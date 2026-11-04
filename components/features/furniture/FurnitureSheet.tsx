@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Check, ExternalLink, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, Pencil, Trash2, X } from 'lucide-react';
 import type { FurnitureItem, FurnitureStatus } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ interface FurnitureSheetProps {
   onClose: () => void;
   onMove: (status: FurnitureStatus) => void;
   onDelete: () => void;
+  onEdit?: () => void;
 }
 
 export function FurnitureSheet({
@@ -22,6 +23,7 @@ export function FurnitureSheet({
   onClose,
   onMove,
   onDelete,
+  onEdit,
 }: FurnitureSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -75,7 +77,7 @@ export function FurnitureSheet({
             type="button"
             onClick={onClose}
             aria-label="Close furniture details"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#deddd5] text-[#85857a] transition-colors hover:bg-[#f1efe8] hover:text-[#292923]"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#deddd5] text-[#85857a] transition-colors hover:bg-[#f1efe8] hover:text-[#292923]"
           >
             <X className="size-4" />
           </button>
@@ -144,10 +146,23 @@ export function FurnitureSheet({
           )}
         </div>
 
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-[#deddd5] px-4 py-3 text-sm text-[#bd765b] transition-colors hover:border-[#bd765b] hover:bg-[#f1e6df]"
+          >
+            <Pencil className="size-4" /> Edit details
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onDelete}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e3c9bf] px-4 py-3 text-sm text-[#a9573d] transition-colors hover:bg-[#fbf0eb]"
+          className={cn(
+            'flex w-full items-center justify-center gap-2 rounded-xl border border-[#e3c9bf] px-4 py-3 text-sm text-[#a9573d] transition-colors hover:bg-[#fbf0eb]',
+            onEdit ? 'mt-2' : 'mt-6'
+          )}
         >
           <Trash2 className="size-4" /> Delete furniture entry
         </button>

@@ -1,15 +1,16 @@
 'use client';
 
-import type { Project } from '@/lib/types';
+import type { Invoice, Project } from '@/lib/types';
 import { useProject } from '@/lib/query/projects';
-import { ProjectView } from '@/components/features/projects/ProjectView';
+import { ProjectSummary } from '@/components/features/projects/ProjectSummary';
 
 interface ProjectClientProps {
   project: Project;
+  invoices: Invoice[];
 }
 
-export function ProjectClient({ project }: ProjectClientProps) {
-  const { data, isLoading, error } = useProject(project.id);
+export function ProjectClient({ project, invoices }: ProjectClientProps) {
+  const { data, isLoading, error } = useProject(project.id, project);
 
   if (isLoading) {
     return (
@@ -27,5 +28,5 @@ export function ProjectClient({ project }: ProjectClientProps) {
     );
   }
 
-  return <ProjectView project={data} />;
+  return <ProjectSummary project={data} invoices={invoices} />;
 }
