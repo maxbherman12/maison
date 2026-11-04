@@ -1,6 +1,6 @@
 # Local blob storage for invoice PDFs
 
-**Status:** Approved for implementation
+**Status:** Implemented and merged into `main` (`d562a2b`, 2026-10-25).
 
 **Related:** [Phased product roadmap](./2026-10-21-product-roadmap.md) (invoice PDF streaming route, section 5.5)
 

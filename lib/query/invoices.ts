@@ -43,7 +43,7 @@ function invalidateInvoice(
   queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
 }
 
-export function useInvoices(projectId: string) {
+export function useInvoices(projectId: string, initialData?: Invoice[]) {
   return useQuery({
     queryKey: invoiceKeys.list(projectId),
     queryFn: async () =>
@@ -51,15 +51,17 @@ export function useInvoices(projectId: string) {
         `/api/invoices?projectId=${encodeURIComponent(projectId)}`
       )) as Invoice[],
     enabled: !!projectId,
+    initialData,
   });
 }
 
-export function useInvoice(invoiceId: string) {
+export function useInvoice(invoiceId: string, initialData?: Invoice) {
   return useQuery({
     queryKey: invoiceKeys.detail(invoiceId),
     queryFn: async () =>
       (await request(`/api/invoices/${invoiceId}`)) as Invoice,
     enabled: !!invoiceId,
+    initialData,
   });
 }
 

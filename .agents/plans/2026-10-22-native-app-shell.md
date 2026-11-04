@@ -1,6 +1,6 @@
 # Phase 1 — Native app shell
 
-**Status:** Implemented in `native-app-shell` (pending review)
+**Status:** Implemented and merged into `main` (`66459a3`, 2026-10-22). Re-verified 2026-11-03: `npx tsc --noEmit` and `pnpm build` pass.
 
 **Date:** 2026-10-22
 
