@@ -1,6 +1,6 @@
 # Maison product roadmap — phased plan
 
-**Status:** In progress — Phases 1–3 shipped on `main`; Phase 4 is in review, including the viewport-first review correction
+**Status:** In progress — Phases 1–4 shipped on `main`; Phases 5–6 not started
 
 **Date:** 2026-10-21
 
@@ -16,14 +16,14 @@ This document is a plan, not implementation approval. Each phase below is intend
 
 ## Current status
 
-**As of 2026-11-03:** Phases 1–3 are implemented and merged into `main`. Phase 4 (project detail simplification) is implemented on `feature/project-detail-simplification` and is awaiting review — it has not been merged. Phase 4 also includes a viewport-first review correction: project detail uses Pending/Invoices tabs, and the project detail, invoice index, composer, and invoice detail routes fill the viewport without page scrolling. Phases 5–6 have not started; Phase 7 remains unscheduled.
+**As of 2026-11-04:** Phases 1–4 are implemented and merged into `main`. Phase 4 (project detail simplification) and its viewport-first review correction are shipped: project detail uses Pending/Invoices tabs, and the project detail, invoice index, composer, and invoice detail routes fill the viewport without page scrolling. Phases 5–6 have not started; Phase 7 remains unscheduled.
 
 - **Phase 1 — native app shell (done, `66459a3`, 2026-10-22):** root layout owns the viewport, one scrolling `<main>`, shared `AppShell`/`AppHeader`/`ProjectShell`, and `dvh`/safe-area handling in sheets. All existing routes render through the shell.
 - **Phase 2 — billing data foundation (done, merged via `5b82633`, 2026-11-01; work in `335277b`, `26c5097`):** persisted `invoice_line_items` snapshots, invoice `sentAt`/`dueAt`/`paidAt` with derived status, refs-only generation in one transaction with blob cleanup, invoice list/detail/PDF APIs, `send`/`pay` actions, full hour-entry and furniture editing, and matching query hooks.
 - **Phase 3 — invoice workspace (done, merged via `fd5d231`, 2026-11-03):** adds the invoice index, composer with preview/sidebar/mobile tabs, shared edit sheet, invoice detail with send/pay actions, and the project-detail invoice link. See [2026-11-03-invoice-workspace.md](./2026-11-03-invoice-workspace.md).
-- **Phase 4 — project detail simplification (in review):** implemented on `feature/project-detail-simplification`; removes the summary cards, furniture icon strip, dead modals, and view switcher; makes pending rows open the shared edit/furniture sheets; puts pending items and invoice history behind a Pending/Invoices tab pair; wires the project edit form; and deletes the obsolete views. The review correction adds a shell fill mode and makes project detail, invoice index, composer, and invoice detail fit the viewport with only designated panels scrolling. See [2026-11-03-project-detail-simplification.md](./2026-11-03-project-detail-simplification.md) and [2026-11-03-viewport-first-routes.md](./2026-11-03-viewport-first-routes.md).
+- **Phase 4 — project detail simplification (done, merged via fast-forward to `c4ded72`, 2026-11-04):** removes the summary cards, furniture icon strip, dead modals, and view switcher; makes pending rows open the shared edit/furniture sheets; puts pending items and invoice history behind a Pending/Invoices tab pair; wires the project edit form; and deletes the obsolete views. The review correction adds a shell fill mode and makes project detail, invoice index, composer, and invoice detail fit the viewport with only designated panels scrolling. See [2026-11-03-project-detail-simplification.md](./2026-11-03-project-detail-simplification.md) and [2026-11-03-viewport-first-routes.md](./2026-11-03-viewport-first-routes.md).
 - **Foundation outside the phase sequence:** `BlobStore` port with local-filesystem and Vercel drivers (`d562a2b`, 2026-10-25), so local invoice generation no longer requires Vercel Blob. This supports the existing PDF route; it is not a separate roadmap phase.
-- **Verification (2026-11-03):** `npx tsc --noEmit` and `pnpm build` both pass on `main` and on the Phase 4 branch. Viewport measurements at 390 x 844, 375 x 667, and 1440 x 900 confirm the project detail, invoice index, composer, and invoice detail routes have no page-level scroll; only their designated panels scroll. The analytics and notification phases do not exist yet.
+- **Verification (2026-11-04):** `npx tsc --noEmit` and `pnpm build` both pass on `main` and on the Phase 4 branch. Viewport measurements at 390 x 844, 375 x 667, and 1440 x 900 confirm the project detail, invoice index, composer, and invoice detail routes have no page-level scroll; only their designated panels scroll. The analytics and notification phases do not exist yet.
 
 The Phase 2 API and hooks were already in place, so Phase 3 was primarily UI work: the invoice routes, preview/composer/sidebar, shared item edit sheet, invoice detail, and status badge.
 
@@ -89,7 +89,7 @@ The app currently has no auth or user model. Settings, dismissals, and alert thr
 | 1 | Native app shell; no document scroll; shared headers | — | M | **Done** — `66459a3` |
 | 2 | Invoice line items, status timestamps, editable entries, invoice APIs | 1 (soft) | L | **Done** — `5b82633` |
 | 3 | Invoice workspace: preview + item sidebar + mobile tabs; invoice detail | 2 | L | **Done** — `fd5d231` |
-| 4 | Simplified project detail: no stat cards/icons, row-click sheet, Pending/Invoices tabs, viewport-first routes | 2, 3 | M | **In review** — `feature/project-detail-simplification` |
+| 4 | Simplified project detail: no stat cards/icons, row-click sheet, Pending/Invoices tabs, viewport-first routes | 2, 3 | M | **Done** — `c4ded72` |
 | 5 | Homepage cumulative revenue chart + list cleanup | 2 | M | Not started; can start independently |
 | 6 | In-app invoice cadence and overdue reminders | 2, 3 | M | Not started |
 | 7 | Future bets: room ideation, scratchpad, task board | Separate plans | — | Unscheduled |
@@ -502,7 +502,7 @@ Mobile tabs:
 
 ## 7. Phase 4 — Project detail simplification
 
-**Status:** In review — implemented on `feature/project-detail-simplification`; not merged. The branch removes the summary cards, furniture strip, dead modals, and view switcher; makes rows open the shared edit/furniture sheets; adds invoice history; and deletes the obsolete views. See [2026-11-03-project-detail-simplification.md](./2026-11-03-project-detail-simplification.md).
+**Status:** Done — merged to `main` via fast-forward to `c4ded72` (2026-11-04). The branch removes the summary cards, furniture strip, dead modals, and view switcher; makes rows open the shared edit/furniture sheets; adds invoice history; and deletes the obsolete views. See [2026-11-03-project-detail-simplification.md](./2026-11-03-project-detail-simplification.md).
 
 ### Problem
 

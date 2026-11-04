@@ -1,6 +1,6 @@
 # Project detail simplification (roadmap Phase 4)
 
-**Status:** Implemented in `feature/project-detail-simplification` (pending review)
+**Status:** Done — merged to `main` via fast-forward to `c4ded72` (2026-11-04)
 
 **Date:** 2026-11-03
 
