@@ -4,8 +4,11 @@ import type {
   LogHoursInput,
   AddFurnitureInput,
   FurnitureStatus,
+  UpdateHourEntryInput,
+  UpdateFurnitureInput,
 } from '../types';
 import type { ProjectRepository } from '../repository/memory';
+import { AppError } from '../errors';
 
 export class ProjectService {
   constructor(private readonly projects: ProjectRepository) {}
@@ -68,7 +71,48 @@ export class ProjectService {
     return this.projects.updateFurnitureStatus(projectId, furnitureId, status);
   }
 
+  async updateFurniture(
+    projectId: string,
+    furnitureId: string,
+    patch: UpdateFurnitureInput
+  ): Promise<Project | null> {
+    if (patch.name !== undefined && !patch.name.trim()) {
+      throw new AppError('Furniture name is required');
+    }
+    if (
+      (patch.retail !== undefined && patch.retail < 0) ||
+      (patch.trade !== undefined && patch.trade < 0)
+    ) {
+      throw new AppError('Prices must be non-negative');
+    }
+    return this.projects.updateFurniture(projectId, furnitureId, patch);
+  }
+
   async deleteFurniture(projectId: string, furnitureId: string): Promise<Project | null> {
     return this.projects.deleteFurniture(projectId, furnitureId);
+  }
+
+  async updateHourEntry(
+    projectId: string,
+    hourId: string,
+    patch: UpdateHourEntryInput
+  ): Promise<Project | null> {
+    if (patch.title !== undefined && !patch.title.trim()) {
+      throw new AppError('Log title is required');
+    }
+    if (patch.hours !== undefined && patch.hours < 0) {
+      throw new AppError('Hours cannot be negative');
+    }
+    if (patch.amount !== undefined && patch.amount < 0) {
+      throw new AppError('Amount must be non-negative');
+    }
+    return this.projects.updateHourEntry(projectId, hourId, patch);
+  }
+
+  async deleteHourEntry(
+    projectId: string,
+    hourId: string
+  ): Promise<Project | null> {
+    return this.projects.deleteHourEntry(projectId, hourId);
   }
 }

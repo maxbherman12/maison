@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useProjects } from '@/lib/query/projects';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { AppShell } from '@/components/layout/AppShell';
 import { ProjectList } from './ProjectList';
 import { ProjectOnboard } from './ProjectOnboard';
 
@@ -9,25 +11,36 @@ export function ProjectsListClient() {
   const { data, isLoading, error } = useProjects();
   const [onboarding, setOnboarding] = useState(false);
 
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-4xl py-10 flex items-center justify-center">
-        <p className="text-muted-foreground">Loading projects...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-4xl py-10 text-center">
-        <p className="text-destructive">Unable to load projects.</p>
-      </div>
-    );
-  }
-
-  if (onboarding) {
-    return <ProjectOnboard onBack={() => setOnboarding(false)} />;
-  }
-
-  return <ProjectList projects={data ?? []} />;
+  return (
+    <AppShell
+      header={
+        <AppHeader
+          brand
+          actions={
+            <button
+              type="button"
+              onClick={() => setOnboarding(true)}
+              className="rounded-full bg-[#bd765b] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#a9573d]"
+            >
+              New project
+            </button>
+          }
+        />
+      }
+    >
+      {onboarding ? (
+        <ProjectOnboard onBack={() => setOnboarding(false)} />
+      ) : isLoading ? (
+        <div className="mx-auto max-w-4xl py-10 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading projects...</p>
+        </div>
+      ) : error ? (
+        <div className="mx-auto max-w-4xl py-10 text-center">
+          <p className="text-destructive">Unable to load projects.</p>
+        </div>
+      ) : (
+        <ProjectList projects={data ?? []} />
+      )}
+    </AppShell>
+  );
 }

@@ -93,12 +93,38 @@ function timestamp(value: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/** Stable key for a pending row, namespaced by source. */
+export function billableRowKey(
+  row: Pick<BillableRow, 'source' | 'itemId'>
+): string {
+  return `${row.source}:${row.itemId}`;
+}
+
+/**
+ * Line items for the rows the caller selected. Ordering matches the pending
+ * grid, so the invoice preview and the generated invoice agree.
+ */
+export function buildSelectedLineItems(
+  project: Project,
+  selectedKeys: ReadonlySet<string>
+): InvoiceLineItem[] {
+  return toLineItems(
+    buildBillableRows(project).filter((row) =>
+      selectedKeys.has(billableRowKey(row))
+    )
+  );
+}
+
 /**
  * Line items for an invoice. Derived from the same rows the pending grid
  * shows, so what you see is exactly what gets billed.
  */
 export function buildInvoiceLineItems(project: Project): InvoiceLineItem[] {
-  return buildBillableRows(project).map((row) => ({
+  return toLineItems(buildBillableRows(project));
+}
+
+function toLineItems(rows: BillableRow[]): InvoiceLineItem[] {
+  return rows.map((row) => ({
     id: row.itemId,
     source: row.source,
     title: row.description,

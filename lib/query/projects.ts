@@ -7,6 +7,8 @@ import type {
   LogHoursInput,
   AddFurnitureInput,
   FurnitureStatus,
+  UpdateHourEntryInput,
+  UpdateFurnitureInput,
 } from '@/lib/types';
 
 export const projectKeys = {
@@ -141,6 +143,75 @@ export function useUpdateFurnitureStatus() {
       ),
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    },
+  });
+}
+
+export function useUpdateFurniture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      furnitureId,
+      patch,
+    }: {
+      projectId: string;
+      furnitureId: string;
+      patch: UpdateFurnitureInput;
+    }) =>
+      request(
+        `/api/projects/${projectId}/furniture/${furnitureId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        }
+      ),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    },
+  });
+}
+
+export function useUpdateHourEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      hourId,
+      patch,
+    }: {
+      projectId: string;
+      hourId: string;
+      patch: UpdateHourEntryInput;
+    }) =>
+      request(`/api/projects/${projectId}/hours/${hourId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    },
+  });
+}
+
+export function useDeleteHourEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      hourId,
+    }: {
+      projectId: string;
+      hourId: string;
+    }) =>
+      request(`/api/projects/${projectId}/hours/${hourId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
     },
   });
 }
