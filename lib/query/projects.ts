@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/api/client';
 import type {
   Project,
   CreateProjectInput,
@@ -18,29 +19,18 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.details(), id] as const,
 };
 
-async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
-}
 
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.lists(),
-    queryFn: async () => (await request('/api/projects')) as Project[],
+    queryFn: async () => (await apiRequest('/api/projects')) as Project[],
   });
 }
 
 export function useProject(id: string, initialData?: Project) {
   return useQuery({
     queryKey: projectKeys.detail(id),
-    queryFn: async () => (await request(`/api/projects/${id}`)) as Project,
+    queryFn: async () => (await apiRequest(`/api/projects/${id}`)) as Project,
     enabled: !!id,
     initialData,
   });
@@ -50,7 +40,7 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateProjectInput) =>
-      request('/api/projects', {
+      apiRequest<Project>('/api/projects', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -70,7 +60,7 @@ export function useUpdateProject() {
       id: string;
       patch: Partial<Project>;
     }) =>
-      request(`/api/projects/${id}`, {
+      apiRequest<Project>(`/api/projects/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
@@ -91,7 +81,7 @@ export function useLogHours() {
       projectId: string;
       input: LogHoursInput;
     }) =>
-      request(`/api/projects/${projectId}/hours`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -112,7 +102,7 @@ export function useAddFurniture() {
       projectId: string;
       input: AddFurnitureInput;
     }) =>
-      request(`/api/projects/${projectId}/furniture`, {
+      apiRequest<Project>(`/api/projects/${projectId}/furniture`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -135,7 +125,7 @@ export function useUpdateFurnitureStatus() {
       furnitureId: string;
       status: FurnitureStatus;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         {
           method: 'PATCH',
@@ -160,7 +150,7 @@ export function useUpdateFurniture() {
       furnitureId: string;
       patch: UpdateFurnitureInput;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         {
           method: 'PATCH',
@@ -186,7 +176,7 @@ export function useUpdateHourEntry() {
       hourId: string;
       patch: UpdateHourEntryInput;
     }) =>
-      request(`/api/projects/${projectId}/hours/${hourId}`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours/${hourId}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
@@ -207,7 +197,7 @@ export function useDeleteHourEntry() {
       projectId: string;
       hourId: string;
     }) =>
-      request(`/api/projects/${projectId}/hours/${hourId}`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours/${hourId}`, {
         method: 'DELETE',
       }),
     onSuccess: (_, { projectId }) => {
@@ -227,7 +217,7 @@ export function useDeleteFurniture() {
       projectId: string;
       furnitureId: string;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         { method: 'DELETE' }
       ),

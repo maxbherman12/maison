@@ -1,13 +1,17 @@
-import { invoiceService } from '@/lib/services/container';
+import { requireApiUser } from '@/lib/auth/session';
+import { errorResponse } from '@/lib/api/errors';
+import { servicesFor } from '@/lib/services/container';
 import {
   GenerateInvoiceSchema,
   InvoiceListQuerySchema,
 } from '@/lib/validators/invoices';
-import { errorResponse } from '@/lib/api/errors';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireApiUser();
+    const { invoiceService } = servicesFor(user.id);
+
     const { searchParams } = new URL(request.url);
     const query = InvoiceListQuerySchema.parse({
       projectId: searchParams.get('projectId') ?? undefined,
@@ -22,6 +26,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireApiUser();
+    const { invoiceService } = servicesFor(user.id);
+
     const body = await request.json();
     const input = GenerateInvoiceSchema.parse(body);
 
