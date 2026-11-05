@@ -58,6 +58,7 @@ No test, lint, or format scripts exist.
 ## Data layer
 
 - PostgreSQL via Drizzle ORM. Schema in `lib/db/schema.ts`, client in `lib/db/client.ts`.
+- `lib/db/client.ts` caps the `pg` pool at 5 connections per instance and attaches it to the Vercel runtime lifecycle (`attachDatabasePool`), so idle instances release connections before they suspend. The pool is cached on `globalThis` in development so hot reloads reuse it.
 - `lib/repository/postgres.ts` — `PostgresProjectRepository`, `PostgresInvoiceRepository` implement the repository interfaces using Drizzle + pg.
 - `lib/services/container.ts` — DI container. Singleton services wired to Postgres repos. Import `projectService` / `invoiceService` from here (server-only).
 - `lib/services/projects.ts` — `ProjectService`: CRUD, log hours, add/update/delete furniture.
