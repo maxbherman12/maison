@@ -14,6 +14,7 @@ import type {
 import 'server-only';
 import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
+import { AppError } from '@/lib/errors';
 import {
   projects,
   hourEntries,
@@ -31,6 +32,12 @@ import type {
 export type { BillableItemRef, ProjectRepository, InvoiceRepository };
 
 export class PostgresProjectRepository implements ProjectRepository {
+  /**
+   * A repository is always bound to one account. There is no unscoped
+   * constructor: every query below inherits this predicate.
+   */
+  constructor(private readonly ownerId: string) {}
+
   private toProject(row: typeof projects.$inferSelect): Project {
     return {
       id: row.id,
@@ -47,15 +54,25 @@ export class PostgresProjectRepository implements ProjectRepository {
   }
 
   async list(): Promise<Project[]> {
-    const rows = await db.select().from(projects).orderBy(projects.createdAt);
+    const rows = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.ownerId, this.ownerId))
+      .orderBy(projects.createdAt);
     const projectMap = new Map<string, Project>();
 
     for (const row of rows) {
       projectMap.set(row.id, this.toProject(row));
     }
 
+    const projectIds = rows.map((row) => row.id);
+    if (projectIds.length === 0) return [];
+
     // Load hours
-    const hoursRows = await db.select().from(hourEntries);
+    const hoursRows = await db
+      .select()
+      .from(hourEntries)
+      .where(inArray(hourEntries.projectId, projectIds));
     for (const h of hoursRows) {
       const project = projectMap.get(h.projectId);
       if (project) {
@@ -71,7 +88,10 @@ export class PostgresProjectRepository implements ProjectRepository {
     }
 
     // Load furniture
-    const furnitureRows = await db.select().from(furnitureItems);
+    const furnitureRows = await db
+      .select()
+      .from(furnitureItems)
+      .where(inArray(furnitureItems.projectId, projectIds));
     for (const f of furnitureRows) {
       const project = projectMap.get(f.projectId);
       if (project) {
@@ -99,7 +119,11 @@ export class PostgresProjectRepository implements ProjectRepository {
   }
 
   async get(id: string): Promise<Project | null> {
-    const row = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+    const row = await db
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, id), eq(projects.ownerId, this.ownerId)))
+      .limit(1);
     if (!row[0]) return null;
 
     const project = this.toProject(row[0]);
@@ -143,6 +167,7 @@ export class PostgresProjectRepository implements ProjectRepository {
 
     await db.insert(projects).values({
       id,
+      ownerId: this.ownerId,
       client: input.client,
       name: input.project,
       address: input.address ?? null,
@@ -163,7 +188,10 @@ export class PostgresProjectRepository implements ProjectRepository {
     if (patch.initials !== undefined) updateData.initials = patch.initials;
 
     if (Object.keys(updateData).length > 0) {
-      await db.update(projects).set(updateData).where(eq(projects.id, id));
+      await db
+        .update(projects)
+        .set(updateData)
+        .where(and(eq(projects.id, id), eq(projects.ownerId, this.ownerId)));
     }
 
     return this.get(id);
@@ -192,6 +220,8 @@ export class PostgresProjectRepository implements ProjectRepository {
     projectId: string,
     input: AddFurnitureInput
   ): Promise<Project | null> {
+    if (!(await this.ownsProject(projectId))) return null;
+
     const itemId = crypto.randomUUID();
 
     await db.insert(furnitureItems).values({
@@ -237,6 +267,8 @@ export class PostgresProjectRepository implements ProjectRepository {
       return this.get(projectId);
     }
 
+    if (!(await this.ownsProject(projectId))) return null;
+
     const updated = await db
       .update(furnitureItems)
       .set(updateData)
@@ -256,6 +288,8 @@ export class PostgresProjectRepository implements ProjectRepository {
     projectId: string,
     furnitureId: string
   ): Promise<Project | null> {
+    if (!(await this.ownsProject(projectId))) return null;
+
     const deleted = await db
       .delete(furnitureItems)
       .where(
@@ -285,6 +319,8 @@ export class PostgresProjectRepository implements ProjectRepository {
       return this.get(projectId);
     }
 
+    if (!(await this.ownsProject(projectId))) return null;
+
     const updated = await db
       .update(hourEntries)
       .set(updateData)
@@ -301,6 +337,8 @@ export class PostgresProjectRepository implements ProjectRepository {
     projectId: string,
     hourId: string
   ): Promise<Project | null> {
+    if (!(await this.ownsProject(projectId))) return null;
+
     const deleted = await db
       .delete(hourEntries)
       .where(
@@ -317,6 +355,8 @@ export class PostgresProjectRepository implements ProjectRepository {
     invoiceId: string,
     items: BillableItemRef[]
   ): Promise<void> {
+    if (!(await this.ownsProject(projectId))) return;
+
     const hourIds = items.filter((i) => i.source === 'hours').map((i) => i.id);
     const furnitureIds = items.filter((i) => i.source === 'furniture').map((i) => i.id);
 
@@ -345,6 +385,18 @@ export class PostgresProjectRepository implements ProjectRepository {
     }
   }
 
+  private async ownsProject(projectId: string): Promise<boolean> {
+    const [row] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(
+        and(eq(projects.id, projectId), eq(projects.ownerId, this.ownerId))
+      )
+      .limit(1);
+
+    return Boolean(row);
+  }
+
   private computeOutstanding(hours: HourEntry[], furniture: FurnitureItem[]): number {
     const labor = hours
       .filter((entry) => entry.invoiceId === null)
@@ -357,6 +409,9 @@ export class PostgresProjectRepository implements ProjectRepository {
 }
 
 export class PostgresInvoiceRepository implements InvoiceRepository {
+  /** Bound to one account; every read and write is scoped by it. */
+  constructor(private readonly ownerId: string) {}
+
   private toInvoice(row: typeof invoices.$inferSelect): Invoice {
     return {
       id: row.id,
@@ -390,7 +445,12 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     const rows = await db
       .select()
       .from(invoices)
-      .where(eq(invoices.projectId, projectId))
+      .where(
+        and(
+          eq(invoices.projectId, projectId),
+          eq(invoices.ownerId, this.ownerId)
+        )
+      )
       .orderBy(desc(invoices.createdAt));
 
     return this.withLineItemCounts(rows.map((row) => this.toInvoice(row)));
@@ -400,6 +460,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     const rows = await db
       .select()
       .from(invoices)
+      .where(eq(invoices.ownerId, this.ownerId))
       .orderBy(desc(invoices.createdAt));
 
     return this.withLineItemCounts(rows.map((row) => this.toInvoice(row)));
@@ -409,7 +470,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     const [row] = await db
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.ownerId, this.ownerId)))
       .limit(1);
     if (!row) return null;
 
@@ -429,15 +490,34 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     input: CreateInvoiceWithItemsInput
   ): Promise<Invoice> {
     return db.transaction(async (tx) => {
-      // Serialise number allocation for the duration of the transaction so two
-      // concurrent generations cannot pick the same `max + 1`.
+      // Defense in depth: the service already loaded this project through a
+      // scoped repository, but never write an invoice against a project that
+      // this account does not own.
+      const [ownedProject] = await tx
+        .select({ id: projects.id })
+        .from(projects)
+        .where(
+          and(
+            eq(projects.id, input.projectId),
+            eq(projects.ownerId, this.ownerId)
+          )
+        )
+        .limit(1);
+      if (!ownedProject) {
+        throw new AppError('Project not found', 404);
+      }
+
+      // Serialise number allocation per account for the duration of the
+      // transaction so two concurrent generations cannot pick the same
+      // `max + 1`.
       await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext('invoice_number'))`
+        sql`select pg_advisory_xact_lock(hashtext(${`invoice_number:${this.ownerId}`}))`
       );
 
       const result = await tx
         .select({ max: sql<number>`max(substring(number from '[0-9]+')::int)` })
-        .from(invoices);
+        .from(invoices)
+        .where(eq(invoices.ownerId, this.ownerId));
       const max = result[0]?.max;
       const counter = max != null && !isNaN(max) ? Number(max) + 1 : 1042;
       const id = crypto.randomUUID();
@@ -448,6 +528,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
         .insert(invoices)
         .values({
           id,
+          ownerId: this.ownerId,
           projectId: input.projectId,
           number,
           createdAt: now,
@@ -533,7 +614,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
     const [row] = await db
       .update(invoices)
       .set({ sentAt, dueAt })
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.ownerId, this.ownerId)))
       .returning();
     if (!row) return null;
     return this.get(row.id);
@@ -550,7 +631,7 @@ export class PostgresInvoiceRepository implements InvoiceRepository {
         paidAt,
         sentAt: existing.sentAt ? new Date(existing.sentAt) : paidAt,
       })
-      .where(eq(invoices.id, id))
+      .where(and(eq(invoices.id, id), eq(invoices.ownerId, this.ownerId)))
       .returning();
     if (!row) return null;
     return this.get(row.id);

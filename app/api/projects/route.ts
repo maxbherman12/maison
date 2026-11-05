@@ -1,14 +1,26 @@
-import { projectService } from '@/lib/services/container';
+import { requireApiUser } from '@/lib/auth/session';
+import { errorResponse } from '@/lib/api/errors';
+import { servicesFor } from '@/lib/services/container';
 import { CreateProjectSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const projects = await projectService.listProjects();
-  return NextResponse.json(projects);
+  try {
+    const user = await requireApiUser();
+    const { projectService } = servicesFor(user.id);
+
+    const projects = await projectService.listProjects();
+    return NextResponse.json(projects);
+  } catch (error) {
+    return errorResponse(error, 'Unable to list projects');
+  }
 }
 
 export async function POST(request: Request) {
   try {
+    const user = await requireApiUser();
+    const { projectService } = servicesFor(user.id);
+
     const body = await request.json();
     const input = CreateProjectSchema.parse(body);
 
@@ -21,7 +33,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(project);
   } catch (error) {
-    console.error('[projects] create failed', error);
-    return NextResponse.json({ error: 'Unable to create project' }, { status: 500 });
+    return errorResponse(error, 'Unable to create project');
   }
 }

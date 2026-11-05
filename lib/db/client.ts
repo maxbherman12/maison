@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { attachDatabasePool } from '@vercel/functions';
 import * as schema from '@/lib/db/schema';
+import * as authSchema from '@/lib/db/auth-schema';
 
 // Next.js re-evaluates modules on hot reload, so a module-scope pool would be
 // recreated on every save during `pnpm dev` and leak connections. Reuse one
@@ -33,4 +34,4 @@ if (process.env.NODE_ENV !== 'production') {
   globalForDb.__maisonPool = pool;
 }
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(pool, { schema: { ...schema, ...authSchema } });

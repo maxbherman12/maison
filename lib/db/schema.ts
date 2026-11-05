@@ -9,23 +9,37 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { user } from './auth-schema';
 
-export const projects = pgTable('projects', {
-  id: text('id').primaryKey(),
-  client: text('client').notNull(),
-  name: text('name').notNull(),
-  address: text('address'),
-  hourlyRate: real('hourly_rate').notNull(),
-  color: text('color').notNull().default('sage'),
-  initials: text('initials').notNull(),
-  outstanding: real('outstanding').notNull().default(0),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+export const projects = pgTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    /** Account that owns this project. Every read and write is scoped by it. */
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+    client: text('client').notNull(),
+    name: text('name').notNull(),
+    address: text('address'),
+    hourlyRate: real('hourly_rate').notNull(),
+    color: text('color').notNull().default('sage'),
+    initials: text('initials').notNull(),
+    outstanding: real('outstanding').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('projects_owner_id_idx').on(table.ownerId)]
+);
 
 export const invoices = pgTable(
   'invoices',
   {
     id: text('id').primaryKey(),
+    /** Account that owns this invoice. Denormalised from the project so direct
+     * invoice lookups (including the PDF route) can be scoped without a join. */
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
     projectId: text('project_id').notNull(),
     number: text('number').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -37,9 +51,10 @@ export const invoices = pgTable(
     paidAt: timestamp('paid_at'),
   },
   (table) => [
+    index('invoices_owner_id_idx').on(table.ownerId),
     index('invoices_project_id_idx').on(table.projectId),
     index('invoices_created_at_idx').on(table.createdAt),
-    uniqueIndex('invoices_number_unique').on(table.number),
+    uniqueIndex('invoices_owner_number_unique').on(table.ownerId, table.number),
   ]
 );
 

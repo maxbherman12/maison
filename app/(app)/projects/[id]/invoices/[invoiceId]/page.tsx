@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { invoiceService, projectService } from '@/lib/services/container';
+import { requireUser } from '@/lib/auth/session';
+import { servicesFor } from '@/lib/services/container';
 import type { Invoice, Project } from '@/lib/types';
 import { ProjectShell } from '@/components/layout/ProjectShell';
 import { InvoiceDetail } from '@/components/features/invoices/InvoiceDetail';
@@ -10,6 +11,9 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string; invoiceId: string }>;
 }) {
   const { id, invoiceId } = await params;
+  const user = await requireUser();
+  const { projectService, invoiceService } = servicesFor(user.id);
+
   const project: Project | null = await projectService.getProject(id);
 
   if (!project) {

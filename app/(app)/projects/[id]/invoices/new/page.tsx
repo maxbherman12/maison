@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { projectService } from '@/lib/services/container';
+import { requireUser } from '@/lib/auth/session';
+import { servicesFor } from '@/lib/services/container';
 import type { Project } from '@/lib/types';
 import { ProjectShell } from '@/components/layout/ProjectShell';
 import { InvoiceWorkspace } from '@/components/features/invoices/InvoiceWorkspace';
@@ -11,6 +12,9 @@ export default async function NewInvoicePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
+  const { projectService } = servicesFor(user.id);
+
   const project: Project | null = await projectService.getProject(id);
 
   if (!project) {
