@@ -6,13 +6,7 @@ import { nextCookies } from 'better-auth/next-js';
 import { admin } from 'better-auth/plugins/admin';
 import { account, session, user, verification } from '@/lib/db/auth-schema';
 import { db } from '@/lib/db/client';
-import {
-  assertAuthConfig,
-  isAdminEmail,
-  isAllowedEmail,
-} from '@/lib/auth/allowlist';
-
-assertAuthConfig();
+import { isAllowedEmail } from '@/lib/auth/allowlist';
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -56,10 +50,12 @@ export const auth = betterAuth({
             });
           }
 
+          // Everyone starts as a regular user. Admin access is the database
+          // role; promote the first admin with `pnpm db:set-role`.
           return {
             data: {
               ...newUser,
-              role: isAdminEmail(newUser.email) ? 'admin' : 'user',
+              role: 'user',
             },
           };
         },

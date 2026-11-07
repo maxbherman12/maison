@@ -1,6 +1,6 @@
 # Multi-account authentication and isolated workspaces
 
-**Status:** Approved
+**Status:** Approved; admin-role selection superseded by [role-based-admin](./2026-11-07-role-based-admin.md).
 
 ## Problem
 

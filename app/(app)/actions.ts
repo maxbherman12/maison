@@ -5,7 +5,6 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { isAdminEmail } from '@/lib/auth/allowlist';
 import { requireAdmin } from '@/lib/auth/session';
 import { user } from '@/lib/db/auth-schema';
 import { db } from '@/lib/db/client';
@@ -26,7 +25,6 @@ export async function impersonate(
   const [target] = await db
     .select({
       id: user.id,
-      email: user.email,
       role: user.role,
       banned: user.banned,
     })
@@ -35,7 +33,7 @@ export async function impersonate(
     .limit(1);
 
   if (!target) return { error: 'Account not found.' };
-  if (target.role === 'admin' || isAdminEmail(target.email)) {
+  if (target.role === 'admin') {
     return { error: 'Admin accounts cannot be impersonated.' };
   }
   if (target.banned) return { error: 'Banned accounts cannot be impersonated.' };

@@ -1,11 +1,8 @@
 import 'server-only';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { isAdminEmail, isAllowedEmail } from '@/lib/auth/allowlist';
-import { db } from '@/lib/db/client';
-import { user } from '@/lib/db/auth-schema';
+import { isAllowedEmail } from '@/lib/auth/allowlist';
 import { AppError } from '@/lib/errors';
 
 /**
@@ -20,23 +17,9 @@ export async function getSession() {
   if (session.user.banned) return null;
   if (!isAllowedEmail(session.user.email)) return null;
 
-  // Keep the database role aligned with `ADMIN_EMAILS`, in both directions.
-  // Better Auth's admin plugin authorizes its own endpoints against this
-  // column, so a promotion must take effect without waiting for a new sign-in
-  // and a demotion must remove the privilege. This only writes on a change.
-  const shouldBeAdmin = isAdminEmail(session.user.email);
-  if (shouldBeAdmin && session.user.role !== 'admin') {
-    await db
-      .update(user)
-      .set({ role: 'admin' })
-      .where(eq(user.id, session.user.id));
-  } else if (!shouldBeAdmin && session.user.role === 'admin') {
-    await db
-      .update(user)
-      .set({ role: 'user' })
-      .where(eq(user.id, session.user.id));
-  }
-
+  // The session deliberately has no cookie cache, so `role` is re-read from
+  // the database on every request. A promotion or demotion takes effect
+  // immediately.
   return session;
 }
 
@@ -66,7 +49,7 @@ export async function requireAdmin() {
   const session = await getSession();
   if (!session) redirect('/sign-in');
   if (session.session.impersonatedBy) redirect('/projects');
-  if (!isAdminEmail(session.user.email)) redirect('/projects');
+  if (session.user.role !== 'admin') redirect('/projects');
 
   return session.user;
 }

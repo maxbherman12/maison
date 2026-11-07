@@ -74,7 +74,7 @@ No test, lint, or format scripts exist.
 - `proxy.ts` only checks that a session cookie exists for page routes. Every route handler and page verifies the real session and re-checks the allowlist, so removing an email locks out an existing cookie on its next request.
 - Data is isolated per account. `projects.owner_id` and `invoices.owner_id` are `NOT NULL`; `hour_entries` and `furniture_items` inherit ownership through their project. Repositories take `ownerId` in the constructor, so there is no unscoped query path. Never build services with a client-supplied id.
 - Invoice numbers are per account: the advisory lock key is `invoice_number:<ownerId>` and the unique index is `(owner_id, number)`.
-- `ADMIN_EMAILS` must be a subset of `ALLOWED_EMAILS`. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped repositories. The banner in `app/(app)/layout.tsx` is the way back.
+- Admin access is the `role` column on `user` (`admin`), and that column is the only source of truth. Promote or demote an existing account with `pnpm db:set-role --email=<email> --role=admin|user`; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped repositories. The banner in `app/(app)/layout.tsx` is the way back.
 - Existing pre-account rows belong to the `legacy-owner` placeholder until `pnpm db:backfill-owner --email=<primary email>` runs after that account's first sign-in.
 - Google Cloud setup: External consent screen, publish it (basic scopes need no review), redirect URIs `http://localhost:3000/api/auth/callback/google` and `https://<domain>/api/auth/callback/google`.
 
@@ -149,7 +149,7 @@ No test, lint, or format scripts exist.
 ## Environment
 
 - `.env.local` requires `DATABASE_URL`. Set `BLOB_DRIVER=local` for filesystem-backed invoice PDFs (stored in `.data/blobs/`). In production leave it unset (or set `vercel`); Vercel Blob needs `BLOB_READ_WRITE_TOKEN` or OIDC and private blob access. Do not commit real tokens.
-- Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. `ADMIN_EMAILS` is optional. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
+- Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. After the first sign-in, promote the owner with `pnpm db:set-role --email=<email> --role=admin`. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
 - `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, v0 internals, `tsconfig.tsbuildinfo`.
 
 ## Version control
