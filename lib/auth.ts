@@ -22,6 +22,13 @@ export const auth = betterAuth({
     provider: 'pg',
     schema: { user, session, account, verification },
   }),
+  advanced: {
+    database: {
+      // Every auth and domain primary key is a Postgres uuid. Without this,
+      // Better Auth writes 32-character random strings into uuid columns.
+      generateId: 'uuid',
+    },
+  },
   socialProviders:
     googleClientId && googleClientSecret
       ? {

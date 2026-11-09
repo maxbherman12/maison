@@ -1,7 +1,7 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { devImpersonationUserId } from '@/lib/auth/dev-mode';
+import { devImpersonationUserId, isUuid } from '@/lib/auth/dev-mode';
 import { user as userTable } from '@/lib/db/auth-schema';
 import { db } from '@/lib/db/client';
 
@@ -21,6 +21,12 @@ export async function getDevImpersonationSession(): Promise<BetterAuthSession | 
   const userId = devImpersonationUserId();
   if (!userId) return null;
 
+  if (!isUuid(userId)) {
+    throw new Error(
+      `IMPERSONATE_USER must be a UUID. Received: ${userId}`
+    );
+  }
+
   const [account] = await db
     .select()
     .from(userTable)
@@ -38,7 +44,7 @@ export async function getDevImpersonationSession(): Promise<BetterAuthSession | 
 
   return {
     session: {
-      id: `dev-${account.id}`,
+      id: crypto.randomUUID(),
       token: `dev-${account.id}`,
       userId: account.id,
       expiresAt,
