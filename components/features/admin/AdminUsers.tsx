@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { impersonate } from '@/app/(app)/actions';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 
 export interface AdminUserRow {
@@ -15,9 +17,17 @@ export interface AdminUserRow {
 interface AdminUsersProps {
   users: AdminUserRow[];
   currentUserId: string;
+  /** False while IMPERSONATE_USER controls the dev session. */
+  impersonationEnabled?: boolean;
 }
 
-export function AdminUsers({ users, currentUserId }: AdminUsersProps) {
+export function AdminUsers({
+  users,
+  currentUserId,
+  impersonationEnabled = true,
+}: AdminUsersProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -27,11 +37,22 @@ export function AdminUsers({ users, currentUserId }: AdminUsersProps) {
     setPendingId(userId);
 
     startTransition(async () => {
-      const result = await impersonate(userId);
-      if (result?.error) {
-        setError(result.error);
+      const { error: impersonationError } =
+        await authClient.admin.impersonateUser({ userId });
+
+      if (impersonationError) {
+        setError(
+          impersonationError.message ?? 'Unable to impersonate this account.'
+        );
         setPendingId(null);
+        return;
       }
+
+      // Better Auth has already refreshed its session atom. Drop every query
+      // so no component can render the admin account's cached rows.
+      queryClient.clear();
+      router.push('/projects');
+      router.refresh();
     });
   }
 
@@ -60,7 +81,11 @@ export function AdminUsers({ users, currentUserId }: AdminUsersProps) {
           const isSelf = account.id === currentUserId;
           const isAdmin = account.role === 'admin';
           const disabled =
-            isSelf || isAdmin || account.banned || pendingId !== null;
+            !impersonationEnabled ||
+            isSelf ||
+            isAdmin ||
+            account.banned ||
+            pendingId !== null;
 
           return (
             <li
@@ -97,6 +122,11 @@ export function AdminUsers({ users, currentUserId }: AdminUsersProps) {
                   variant="outline"
                   size="sm"
                   disabled={disabled}
+                  title={
+                    !impersonationEnabled
+                      ? 'IMPERSONATE_USER controls the active account in this environment.'
+                      : undefined
+                  }
                   onClick={() => handleImpersonate(account.id)}
                 >
                   {pendingId === account.id ? 'Opening…' : 'View as'}

@@ -1,6 +1,11 @@
 # Dev auth layer: `IMPERSONATE_USER`
 
-**Status:** Draft for review
+**Status:** Implemented — awaiting review
+
+> Update: the `/admin` view-as path in this plan originally used a server action.
+> That path now uses Better Auth's client admin endpoint so the client session
+> atom updates; see `2026-11-08-reactive-session-cache.md`. `IMPERSONATE_USER`
+> itself is unchanged.
 
 ## Problem
 

@@ -9,6 +9,7 @@ import {
 import type { Invoice, GenerateInvoiceInput } from '@/lib/types';
 import { apiRequest } from '@/lib/api/client';
 import { projectKeys } from '@/lib/query/projects';
+import { useSessionUserId, userScopedKey } from '@/lib/query/session';
 
 export const invoiceKeys = {
   all: ['invoices'] as const,
@@ -20,36 +21,47 @@ export const invoiceKeys = {
 
 function invalidateInvoice(
   queryClient: QueryClient,
-  invoice: Pick<Invoice, 'id' | 'projectId'>
+  invoice: Pick<Invoice, 'id' | 'projectId'>,
+  userId: string | null
 ) {
-  queryClient.invalidateQueries({ queryKey: invoiceKeys.list(invoice.projectId) });
-  queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(invoice.id) });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, invoiceKeys.list(invoice.projectId)),
+  });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, invoiceKeys.detail(invoice.id)),
+  });
   // Billing items changes the pending grid and the project list outstanding
   // figures, so refresh both.
   queryClient.invalidateQueries({
-    queryKey: projectKeys.detail(invoice.projectId),
+    queryKey: userScopedKey(userId, projectKeys.detail(invoice.projectId)),
   });
-  queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, projectKeys.lists()),
+  });
 }
 
 export function useInvoices(projectId: string, initialData?: Invoice[]) {
+  const userId = useSessionUserId();
+
   return useQuery({
-    queryKey: invoiceKeys.list(projectId),
+    queryKey: userScopedKey(userId, invoiceKeys.list(projectId)),
     queryFn: async () =>
       (await apiRequest(
         `/api/invoices?projectId=${encodeURIComponent(projectId)}`
       )) as Invoice[],
-    enabled: !!projectId,
+    enabled: !!projectId && !!userId,
     initialData,
   });
 }
 
 export function useInvoice(invoiceId: string, initialData?: Invoice) {
+  const userId = useSessionUserId();
+
   return useQuery({
-    queryKey: invoiceKeys.detail(invoiceId),
+    queryKey: userScopedKey(userId, invoiceKeys.detail(invoiceId)),
     queryFn: async () =>
       (await apiRequest(`/api/invoices/${invoiceId}`)) as Invoice,
-    enabled: !!invoiceId,
+    enabled: !!invoiceId && !!userId,
     initialData,
   });
 }
@@ -58,6 +70,8 @@ export function useGenerateInvoice(options?: {
   onSuccess?: (invoice: Invoice) => void;
 }) {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (input: GenerateInvoiceInput) =>
       apiRequest('/api/invoices', {
@@ -65,7 +79,7 @@ export function useGenerateInvoice(options?: {
         body: JSON.stringify(input),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
       options?.onSuccess?.(invoice);
     },
   });
@@ -73,6 +87,8 @@ export function useGenerateInvoice(options?: {
 
 export function useMarkInvoiceSent() {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (invoiceId: string) =>
       apiRequest(`/api/invoices/${invoiceId}`, {
@@ -80,13 +96,15 @@ export function useMarkInvoiceSent() {
         body: JSON.stringify({ action: 'send' }),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
     },
   });
 }
 
 export function useMarkInvoicePaid() {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (invoiceId: string) =>
       apiRequest(`/api/invoices/${invoiceId}`, {
@@ -94,7 +112,7 @@ export function useMarkInvoicePaid() {
         body: JSON.stringify({ action: 'pay' }),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
     },
   });
 }

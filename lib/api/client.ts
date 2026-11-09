@@ -14,7 +14,13 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(path, {
+    ...options,
+    headers,
+    // These responses are owner-scoped. Never let the browser reuse a cached
+    // body across a session or impersonation change.
+    cache: 'no-store',
+  });
 
   if (res.status === 401) {
     if (typeof window !== 'undefined') {

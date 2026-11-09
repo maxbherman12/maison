@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { LogOut, Users } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 
 export function UserMenu() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending || !session) return null;
@@ -19,6 +21,7 @@ export function UserMenu() {
 
   async function handleSignOut() {
     await authClient.signOut();
+    queryClient.clear();
     router.push('/sign-in');
     router.refresh();
   }

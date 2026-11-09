@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api/client';
+import { useSessionUserId, userScopedKey } from '@/lib/query/session';
 import type {
   Project,
   CreateProjectInput,
@@ -19,25 +20,41 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.details(), id] as const,
 };
 
+function useProjectQueryScope() {
+  const userId = useSessionUserId();
+
+  return {
+    userId,
+    list: userScopedKey(userId, projectKeys.lists()),
+    detail: (id: string) => userScopedKey(userId, projectKeys.detail(id)),
+  };
+}
 
 export function useProjects() {
+  const { userId, list } = useProjectQueryScope();
+
   return useQuery({
-    queryKey: projectKeys.lists(),
+    queryKey: list,
     queryFn: async () => (await apiRequest('/api/projects')) as Project[],
+    enabled: !!userId,
   });
 }
 
 export function useProject(id: string, initialData?: Project) {
+  const { userId, detail } = useProjectQueryScope();
+
   return useQuery({
-    queryKey: projectKeys.detail(id),
+    queryKey: detail(id),
     queryFn: async () => (await apiRequest(`/api/projects/${id}`)) as Project,
-    enabled: !!id,
+    enabled: !!id && !!userId,
     initialData,
   });
 }
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
+  const { list } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: (input: CreateProjectInput) =>
       apiRequest<Project>('/api/projects', {
@@ -45,13 +62,15 @@ export function useCreateProject() {
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       id,
@@ -65,14 +84,16 @@ export function useUpdateProject() {
         body: JSON.stringify(patch),
       }),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(id) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useLogHours() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -86,14 +107,16 @@ export function useLogHours() {
         body: JSON.stringify(input),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useAddFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -107,14 +130,16 @@ export function useAddFurniture() {
         body: JSON.stringify(input),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateFurnitureStatus() {
   const queryClient = useQueryClient();
+  const { detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -133,13 +158,15 @@ export function useUpdateFurnitureStatus() {
         }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
     },
   });
 }
 
 export function useUpdateFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -158,14 +185,16 @@ export function useUpdateFurniture() {
         }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateHourEntry() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -181,14 +210,16 @@ export function useUpdateHourEntry() {
         body: JSON.stringify(patch),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useDeleteHourEntry() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -201,14 +232,16 @@ export function useDeleteHourEntry() {
         method: 'DELETE',
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useDeleteFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -222,8 +255,8 @@ export function useDeleteFurniture() {
         { method: 'DELETE' }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }

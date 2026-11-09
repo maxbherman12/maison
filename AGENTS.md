@@ -98,6 +98,7 @@ No test, lint, or format scripts exist.
 ## State management
 
 - Server state: React Query (`@tanstack/react-query`). Hooks call API routes via `fetch`.
+- Query keys are scoped to the signed-in user with `userScopedKey(userId, ...)` from `lib/query/session.ts`. `SessionProvider` clears the query cache whenever the session identity changes, so impersonation or account switching cannot reuse another account's cached data.
 - Client UI state: React `useState` / `useReducer` in feature components.
 - Forms: React Hook Form + Zod resolvers (`@hookform/resolvers`).
 
