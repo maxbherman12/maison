@@ -1,6 +1,5 @@
-import { requireApiUser } from '@/lib/auth/session';
 import { errorResponse } from '@/lib/api/errors';
-import { servicesFor } from '@/lib/services/container';
+import { getApiServices } from '@/lib/services/container';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -8,8 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
-    const user = await requireApiUser();
-    const { invoiceService } = servicesFor(user.id);
+    const { invoiceService } = await getApiServices();
 
     const { invoiceId } = await params;
 

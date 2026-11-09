@@ -6,18 +6,17 @@ import {
 import { ProjectService } from '@/lib/services/projects';
 import { InvoiceService, PdfInvoiceRenderer } from '@/lib/services/invoices';
 import { createBlobStore } from '@/lib/storage';
+import { requireApiUser, requireUser } from '@/lib/auth/session';
 
 // Stateless collaborators shared across requests.
 const invoiceRenderer = new PdfInvoiceRenderer();
 const blobStore = createBlobStore();
 
 /**
- * Builds services bound to one account. Repositories take the owner in their
- * constructor, so it is impossible to query or write without a scope.
- *
- * Call this with an authenticated user id, never a client-supplied value.
+ * Wires the services to one account. Private on purpose: only the authenticated
+ * entry points below may supply an owner id.
  */
-export function servicesFor(ownerId: string) {
+function createServices(ownerId: string) {
   const projectRepository = new PostgresProjectRepository(ownerId);
   const invoiceRepository = new PostgresInvoiceRepository(ownerId);
 
@@ -32,5 +31,19 @@ export function servicesFor(ownerId: string) {
   };
 }
 
-// Re-exported for direct access when needed (e.g. in API routes).
-export { invoiceRenderer, blobStore };
+/**
+ * Services for a page or Server Component. Redirects to sign-in when the
+ * request has no valid session.
+ */
+export async function getPageServices() {
+  const user = await requireUser();
+  return createServices(user.id);
+}
+
+/**
+ * Services for a route handler. Throws `AppError(401)` instead of redirecting.
+ */
+export async function getApiServices() {
+  const user = await requireApiUser();
+  return createServices(user.id);
+}

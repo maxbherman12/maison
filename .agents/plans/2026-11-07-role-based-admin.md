@@ -1,6 +1,7 @@
 # Role-based admin
 
 **Status:** Draft for review
+**Scripts removed 2026-11-08:** `scripts/set-role.mjs` no longer exists; set `user.role` with SQL.
 **Related:** [multi-account-auth](./2026-11-05-multi-account-auth.md)
 
 ## Problem

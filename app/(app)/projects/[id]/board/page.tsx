@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireUser } from '@/lib/auth/session';
-import { servicesFor } from '@/lib/services/container';
+import { getPageServices } from '@/lib/services/container';
 import type { Project } from '@/lib/types';
 import { FurnitureBoard } from '@/components/features/furniture/FurnitureBoard';
 import { ProjectShell } from '@/components/layout/ProjectShell';
@@ -11,8 +10,7 @@ export default async function FurnitureBoardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
-  const { projectService } = servicesFor(user.id);
+  const { projectService } = await getPageServices();
 
   const project: Project | null = await projectService.getProject(id);
 

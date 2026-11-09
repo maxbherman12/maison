@@ -1,7 +1,6 @@
-import { requireApiUser } from '@/lib/auth/session';
 import { errorResponse } from '@/lib/api/errors';
 import { AppError } from '@/lib/errors';
-import { servicesFor } from '@/lib/services/container';
+import { getApiServices } from '@/lib/services/container';
 import { LogHoursSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
@@ -11,8 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiUser();
-    const { projectService } = servicesFor(user.id);
+    const { projectService } = await getApiServices();
 
     const { id } = await params;
     const body = await request.json();

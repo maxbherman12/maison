@@ -51,7 +51,7 @@ export const auth = betterAuth({
           }
 
           // Everyone starts as a regular user. Admin access is the database
-          // role; promote the first admin with `pnpm db:set-role`.
+          // role; set `user.role = 'admin'` for the first admin.
           return {
             data: {
               ...newUser,

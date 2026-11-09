@@ -1,6 +1,5 @@
-import { requireApiUser } from '@/lib/auth/session';
 import { errorResponse } from '@/lib/api/errors';
-import { servicesFor } from '@/lib/services/container';
+import { getApiServices } from '@/lib/services/container';
 import {
   GenerateInvoiceSchema,
   InvoiceListQuerySchema,
@@ -9,8 +8,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireApiUser();
-    const { invoiceService } = servicesFor(user.id);
+    const { invoiceService } = await getApiServices();
 
     const { searchParams } = new URL(request.url);
     const query = InvoiceListQuerySchema.parse({
@@ -26,8 +24,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireApiUser();
-    const { invoiceService } = servicesFor(user.id);
+    const { invoiceService } = await getApiServices();
 
     const body = await request.json();
     const input = GenerateInvoiceSchema.parse(body);

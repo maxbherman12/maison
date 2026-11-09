@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { AdminUsers } from '@/components/features/admin/AdminUsers';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppShell } from '@/components/layout/AppShell';
-import { auth } from '@/lib/auth';
+import { listAccounts } from '@/lib/auth/accounts';
 import { requireAdmin } from '@/lib/auth/session';
 
 export const metadata: Metadata = {
@@ -13,14 +12,7 @@ export const metadata: Metadata = {
 export default async function AdminPage() {
   const admin = await requireAdmin();
 
-  const { users } = await auth.api.listUsers({
-    headers: await headers(),
-    query: {
-      limit: 100,
-      sortBy: 'createdAt',
-      sortDirection: 'asc',
-    },
-  });
+  const users = await listAccounts();
 
   const rows = users.map((account) => ({
     id: account.id,

@@ -1,6 +1,5 @@
-import { requireApiUser } from '@/lib/auth/session';
 import { errorResponse } from '@/lib/api/errors';
-import { servicesFor } from '@/lib/services/container';
+import { getApiServices } from '@/lib/services/container';
 import { MarkInvoiceSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 
@@ -9,8 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
-    const user = await requireApiUser();
-    const { invoiceService } = servicesFor(user.id);
+    const { invoiceService } = await getApiServices();
 
     const { invoiceId } = await params;
 
@@ -30,8 +28,7 @@ export async function PATCH(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
-    const user = await requireApiUser();
-    const { invoiceService } = servicesFor(user.id);
+    const { invoiceService } = await getApiServices();
 
     const { invoiceId } = await params;
     const body = await request.json();

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
+import { devImpersonationUserId } from '@/lib/auth/dev-mode';
 
 /**
  * Fast page-level gate. This only checks that a session cookie exists; the
@@ -11,7 +12,7 @@ import { getSessionCookie } from 'better-auth/cookies';
  * instead of redirecting a fetch to an HTML sign-in page.
  */
 export function proxy(request: NextRequest) {
-  if (getSessionCookie(request)) {
+  if (devImpersonationUserId() || getSessionCookie(request)) {
     return NextResponse.next();
   }
 

@@ -3,14 +3,22 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { isAllowedEmail } from '@/lib/auth/allowlist';
+import { getDevImpersonationSession } from '@/lib/auth/dev-impersonation';
 import { AppError } from '@/lib/errors';
 
 /**
  * Reads the session and rejects identities that are no longer authorized.
  * The allowlist is re-checked here (not only at account creation) so removing
  * an email from the environment locks out existing cookies immediately.
+ *
+ * `IMPERSONATE_USER` is a development-only override. When it is active it
+ * short-circuits the real session lookup (and the allowlist/ban checks, since
+ * the override is explicit); production ignores the variable entirely.
  */
 export async function getSession() {
+  const devSession = await getDevImpersonationSession();
+  if (devSession) return devSession;
+
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) return null;

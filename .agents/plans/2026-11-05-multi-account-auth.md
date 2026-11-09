@@ -1,6 +1,7 @@
 # Multi-account authentication and isolated workspaces
 
 **Status:** Approved; admin-role selection superseded by [role-based-admin](./2026-11-07-role-based-admin.md).
+**Scripts removed 2026-11-08:** `scripts/backfill-owner.mjs` and `scripts/set-role.mjs` no longer exist; perform those operations with SQL.
 
 ## Problem
 

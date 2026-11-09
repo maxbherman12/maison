@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { devImpersonationUserId } from '@/lib/auth/dev-mode';
 import { requireAdmin } from '@/lib/auth/session';
 import { user } from '@/lib/db/auth-schema';
 import { db } from '@/lib/db/client';
@@ -20,6 +21,13 @@ export async function impersonate(
 
   if (userId === admin.id) {
     return { error: 'You are already signed in as this account.' };
+  }
+
+  if (devImpersonationUserId()) {
+    return {
+      error:
+        'IMPERSONATE_USER is active. Change it and restart the dev server to switch accounts.',
+    };
   }
 
   const [target] = await db
