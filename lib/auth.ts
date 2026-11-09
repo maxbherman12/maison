@@ -1,0 +1,81 @@
+import 'server-only';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
+import { nextCookies } from 'better-auth/next-js';
+import { admin } from 'better-auth/plugins/admin';
+import { account, session, user, verification } from '@/lib/db/auth-schema';
+import { db } from '@/lib/db/client';
+import { isAllowedEmail } from '@/lib/auth/allowlist';
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+if (process.env.NODE_ENV === 'production' && (!googleClientId || !googleClientSecret)) {
+  console.warn(
+    '[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are missing. Google sign-in will not work.'
+  );
+}
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: { user, session, account, verification },
+  }),
+  advanced: {
+    database: {
+      // Every auth and domain primary key is a Postgres uuid. Without this,
+      // Better Auth writes 32-character random strings into uuid columns.
+      generateId: 'uuid',
+    },
+  },
+  socialProviders:
+    googleClientId && googleClientSecret
+      ? {
+          google: {
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+            prompt: 'select_account',
+          },
+        }
+      : {},
+  session: {
+    expiresIn: 60 * 60 * 24 * 14,
+    updateAge: 60 * 60 * 24,
+    // Deliberately no cookie cache: `role`, `banned`, and the allowlist are
+    // re-read on every request. With a handful of accounts the extra query is
+    // free, and it removes a window where a revoked or newly promoted account
+    // would keep acting on stale session data.
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (newUser) => {
+          if (!isAllowedEmail(newUser.email)) {
+            throw new APIError('FORBIDDEN', {
+              message: 'This account is not authorized to use Maison.',
+            });
+          }
+
+          // Everyone starts as a regular user. Admin access is the database
+          // role; set `user.role = 'admin'` for the first admin.
+          return {
+            data: {
+              ...newUser,
+              role: 'user',
+            },
+          };
+        },
+      },
+    },
+  },
+  plugins: [
+    admin({
+      adminRoles: ['admin'],
+      defaultRole: 'user',
+      impersonationSessionDuration: 60 * 60,
+    }),
+    // Must stay last so Server Actions and Route Handlers set cookies.
+    nextCookies(),
+  ],
+});

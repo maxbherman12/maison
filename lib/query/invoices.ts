@@ -7,7 +7,9 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import type { Invoice, GenerateInvoiceInput } from '@/lib/types';
+import { apiRequest } from '@/lib/api/client';
 import { projectKeys } from '@/lib/query/projects';
+import { useSessionUserId, userScopedKey } from '@/lib/query/session';
 
 export const invoiceKeys = {
   all: ['invoices'] as const,
@@ -17,50 +19,49 @@ export const invoiceKeys = {
   detail: (invoiceId: string) => [...invoiceKeys.details(), invoiceId] as const,
 };
 
-async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
-}
-
 function invalidateInvoice(
   queryClient: QueryClient,
-  invoice: Pick<Invoice, 'id' | 'projectId'>
+  invoice: Pick<Invoice, 'id' | 'projectId'>,
+  userId: string | null
 ) {
-  queryClient.invalidateQueries({ queryKey: invoiceKeys.list(invoice.projectId) });
-  queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(invoice.id) });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, invoiceKeys.list(invoice.projectId)),
+  });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, invoiceKeys.detail(invoice.id)),
+  });
   // Billing items changes the pending grid and the project list outstanding
   // figures, so refresh both.
   queryClient.invalidateQueries({
-    queryKey: projectKeys.detail(invoice.projectId),
+    queryKey: userScopedKey(userId, projectKeys.detail(invoice.projectId)),
   });
-  queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+  queryClient.invalidateQueries({
+    queryKey: userScopedKey(userId, projectKeys.lists()),
+  });
 }
 
 export function useInvoices(projectId: string, initialData?: Invoice[]) {
+  const userId = useSessionUserId();
+
   return useQuery({
-    queryKey: invoiceKeys.list(projectId),
+    queryKey: userScopedKey(userId, invoiceKeys.list(projectId)),
     queryFn: async () =>
-      (await request(
+      (await apiRequest(
         `/api/invoices?projectId=${encodeURIComponent(projectId)}`
       )) as Invoice[],
-    enabled: !!projectId,
+    enabled: !!projectId && !!userId,
     initialData,
   });
 }
 
 export function useInvoice(invoiceId: string, initialData?: Invoice) {
+  const userId = useSessionUserId();
+
   return useQuery({
-    queryKey: invoiceKeys.detail(invoiceId),
+    queryKey: userScopedKey(userId, invoiceKeys.detail(invoiceId)),
     queryFn: async () =>
-      (await request(`/api/invoices/${invoiceId}`)) as Invoice,
-    enabled: !!invoiceId,
+      (await apiRequest(`/api/invoices/${invoiceId}`)) as Invoice,
+    enabled: !!invoiceId && !!userId,
     initialData,
   });
 }
@@ -69,14 +70,16 @@ export function useGenerateInvoice(options?: {
   onSuccess?: (invoice: Invoice) => void;
 }) {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (input: GenerateInvoiceInput) =>
-      request('/api/invoices', {
+      apiRequest('/api/invoices', {
         method: 'POST',
         body: JSON.stringify(input),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
       options?.onSuccess?.(invoice);
     },
   });
@@ -84,28 +87,32 @@ export function useGenerateInvoice(options?: {
 
 export function useMarkInvoiceSent() {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (invoiceId: string) =>
-      request(`/api/invoices/${invoiceId}`, {
+      apiRequest(`/api/invoices/${invoiceId}`, {
         method: 'PATCH',
         body: JSON.stringify({ action: 'send' }),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
     },
   });
 }
 
 export function useMarkInvoicePaid() {
   const queryClient = useQueryClient();
+  const userId = useSessionUserId();
+
   return useMutation({
     mutationFn: (invoiceId: string) =>
-      request(`/api/invoices/${invoiceId}`, {
+      apiRequest(`/api/invoices/${invoiceId}`, {
         method: 'PATCH',
         body: JSON.stringify({ action: 'pay' }),
       }) as Promise<Invoice>,
     onSuccess: (invoice) => {
-      invalidateInvoice(queryClient, invoice);
+      invalidateInvoice(queryClient, invoice, userId);
     },
   });
 }

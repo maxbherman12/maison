@@ -1,6 +1,8 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/api/client';
+import { useSessionUserId, userScopedKey } from '@/lib/query/session';
 import type {
   Project,
   CreateProjectInput,
@@ -18,50 +20,57 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.details(), id] as const,
 };
 
-async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
+function useProjectQueryScope() {
+  const userId = useSessionUserId();
+
+  return {
+    userId,
+    list: userScopedKey(userId, projectKeys.lists()),
+    detail: (id: string) => userScopedKey(userId, projectKeys.detail(id)),
+  };
 }
 
 export function useProjects() {
+  const { userId, list } = useProjectQueryScope();
+
   return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: async () => (await request('/api/projects')) as Project[],
+    queryKey: list,
+    queryFn: async () => (await apiRequest('/api/projects')) as Project[],
+    enabled: !!userId,
   });
 }
 
 export function useProject(id: string, initialData?: Project) {
+  const { userId, detail } = useProjectQueryScope();
+
   return useQuery({
-    queryKey: projectKeys.detail(id),
-    queryFn: async () => (await request(`/api/projects/${id}`)) as Project,
-    enabled: !!id,
+    queryKey: detail(id),
+    queryFn: async () => (await apiRequest(`/api/projects/${id}`)) as Project,
+    enabled: !!id && !!userId,
     initialData,
   });
 }
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
+  const { list } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: (input: CreateProjectInput) =>
-      request('/api/projects', {
+      apiRequest<Project>('/api/projects', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       id,
@@ -70,19 +79,21 @@ export function useUpdateProject() {
       id: string;
       patch: Partial<Project>;
     }) =>
-      request(`/api/projects/${id}`, {
+      apiRequest<Project>(`/api/projects/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(id) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useLogHours() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -91,19 +102,21 @@ export function useLogHours() {
       projectId: string;
       input: LogHoursInput;
     }) =>
-      request(`/api/projects/${projectId}/hours`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useAddFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -112,19 +125,21 @@ export function useAddFurniture() {
       projectId: string;
       input: AddFurnitureInput;
     }) =>
-      request(`/api/projects/${projectId}/furniture`, {
+      apiRequest<Project>(`/api/projects/${projectId}/furniture`, {
         method: 'POST',
         body: JSON.stringify(input),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateFurnitureStatus() {
   const queryClient = useQueryClient();
+  const { detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -135,7 +150,7 @@ export function useUpdateFurnitureStatus() {
       furnitureId: string;
       status: FurnitureStatus;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         {
           method: 'PATCH',
@@ -143,13 +158,15 @@ export function useUpdateFurnitureStatus() {
         }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
     },
   });
 }
 
 export function useUpdateFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -160,7 +177,7 @@ export function useUpdateFurniture() {
       furnitureId: string;
       patch: UpdateFurnitureInput;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         {
           method: 'PATCH',
@@ -168,14 +185,16 @@ export function useUpdateFurniture() {
         }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useUpdateHourEntry() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -186,19 +205,21 @@ export function useUpdateHourEntry() {
       hourId: string;
       patch: UpdateHourEntryInput;
     }) =>
-      request(`/api/projects/${projectId}/hours/${hourId}`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours/${hourId}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useDeleteHourEntry() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -207,18 +228,20 @@ export function useDeleteHourEntry() {
       projectId: string;
       hourId: string;
     }) =>
-      request(`/api/projects/${projectId}/hours/${hourId}`, {
+      apiRequest<Project>(`/api/projects/${projectId}/hours/${hourId}`, {
         method: 'DELETE',
       }),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }
 
 export function useDeleteFurniture() {
   const queryClient = useQueryClient();
+  const { list, detail } = useProjectQueryScope();
+
   return useMutation({
     mutationFn: ({
       projectId,
@@ -227,13 +250,13 @@ export function useDeleteFurniture() {
       projectId: string;
       furnitureId: string;
     }) =>
-      request(
+      apiRequest<Project>(
         `/api/projects/${projectId}/furniture/${furnitureId}`,
         { method: 'DELETE' }
       ),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: list });
     },
   });
 }

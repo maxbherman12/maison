@@ -1,25 +1,49 @@
 import 'server-only';
-import { PostgresProjectRepository, PostgresInvoiceRepository } from '@/lib/repository/postgres';
+import {
+  PostgresProjectRepository,
+  PostgresInvoiceRepository,
+} from '@/lib/repository/postgres';
 import { ProjectService } from '@/lib/services/projects';
 import { InvoiceService, PdfInvoiceRenderer } from '@/lib/services/invoices';
 import { createBlobStore } from '@/lib/storage';
+import { requireApiUser, requireUser } from '@/lib/auth/session';
 
-// Singleton container for dependency injection.
-// Postgres repositories are used in all environments; swap implementations here
-// to connect a different database or external service without touching service
-// or UI code.
-const projectRepository = new PostgresProjectRepository();
-const invoiceRepository = new PostgresInvoiceRepository();
+// Stateless collaborators shared across requests.
 const invoiceRenderer = new PdfInvoiceRenderer();
 const blobStore = createBlobStore();
 
-export const projectService = new ProjectService(projectRepository);
-export const invoiceService = new InvoiceService(
-  invoiceRepository,
-  invoiceRenderer,
-  projectRepository,
-  blobStore
-);
+/**
+ * Wires the services to one account. Private on purpose: only the authenticated
+ * entry points below may supply an owner id.
+ */
+function createServices(ownerId: string) {
+  const projectRepository = new PostgresProjectRepository(ownerId);
+  const invoiceRepository = new PostgresInvoiceRepository(ownerId);
 
-// Re-exported for direct access when needed (e.g. in API routes)
-export { projectRepository, invoiceRepository, invoiceRenderer, blobStore };
+  return {
+    projectService: new ProjectService(projectRepository),
+    invoiceService: new InvoiceService(
+      invoiceRepository,
+      invoiceRenderer,
+      projectRepository,
+      blobStore
+    ),
+  };
+}
+
+/**
+ * Services for a page or Server Component. Redirects to sign-in when the
+ * request has no valid session.
+ */
+export async function getPageServices() {
+  const user = await requireUser();
+  return createServices(user.id);
+}
+
+/**
+ * Services for a route handler. Throws `AppError(401)` instead of redirecting.
+ */
+export async function getApiServices() {
+  const user = await requireApiUser();
+  return createServices(user.id);
+}

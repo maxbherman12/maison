@@ -1,6 +1,6 @@
-import { projectService } from '@/lib/services/container';
-import { UpdateFurnitureSchema } from '@/lib/validators/invoices';
 import { errorResponse } from '@/lib/api/errors';
+import { getApiServices } from '@/lib/services/container';
+import { UpdateFurnitureSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -8,6 +8,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; furnitureId: string }> }
 ) {
   try {
+    const { projectService } = await getApiServices();
+
     const { id, furnitureId } = await params;
     const body = await request.json();
     const input = UpdateFurnitureSchema.parse(body);
@@ -28,6 +30,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; furnitureId: string }> }
 ) {
   try {
+    const { projectService } = await getApiServices();
+
     const { id, furnitureId } = await params;
 
     const project = await projectService.deleteFurniture(id, furnitureId);

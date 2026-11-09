@@ -1,4 +1,6 @@
-import { projectService } from '@/lib/services/container';
+import { errorResponse } from '@/lib/api/errors';
+import { AppError } from '@/lib/errors';
+import { getApiServices } from '@/lib/services/container';
 import { LogHoursSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
@@ -7,9 +9,10 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-
   try {
+    const { projectService } = await getApiServices();
+
+    const { id } = await params;
     const body = await request.json();
     const input = LogHoursSchema.parse(body);
 
@@ -26,6 +29,10 @@ export async function POST(
 
     return NextResponse.json(project);
   } catch (error) {
+    if (error instanceof AppError) {
+      return errorResponse(error, 'Unable to log hours');
+    }
+
     console.error('[projects] log hours failed', error);
 
     if (error instanceof ZodError) {

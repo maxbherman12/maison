@@ -58,13 +58,26 @@ No test, lint, or format scripts exist.
 ## Data layer
 
 - PostgreSQL via Drizzle ORM. Schema in `lib/db/schema.ts`, client in `lib/db/client.ts`.
+- Every primary key and row-reference column is a Postgres `uuid`. Domain inserts use `crypto.randomUUID()`; Better Auth is configured with `advanced.database.generateId: 'uuid'`.
 - `lib/db/client.ts` caps the `pg` pool at 5 connections per instance and attaches it to the Vercel runtime lifecycle (`attachDatabasePool`), so idle instances release connections before they suspend. The pool is cached on `globalThis` in development so hot reloads reuse it.
 - `lib/repository/postgres.ts` — `PostgresProjectRepository`, `PostgresInvoiceRepository` implement the repository interfaces using Drizzle + pg.
-- `lib/services/container.ts` — DI container. Singleton services wired to Postgres repos. Import `projectService` / `invoiceService` from here (server-only).
+- `lib/services/container.ts` — authenticated service entry points. `getPageServices()` (pages/Server Components) redirects to sign-in, `getApiServices()` (route handlers) throws `AppError(401)`. Both build repositories/services bound to the session user; raw owner-id construction is private.
 - `lib/services/projects.ts` — `ProjectService`: CRUD, log hours, add/update/delete furniture.
 - `lib/services/invoices.ts` — `InvoiceService`: renders a PDF via `pdf-lib`, stores it through the `BlobStore`, persists the invoice record.
 - `lib/validators/invoices.ts` — Zod schemas for invoice generation, project creation, hour/furniture logs.
 - API routes: `app/api/projects/*`, `app/api/invoices/route.ts`, and `app/api/invoices/[invoiceId]/pdf/route.ts` — validate with Zod, delegate to services.
+
+## Authentication and accounts
+
+- Better Auth (v1.7) with the Google provider. Users, sessions, and accounts live in the same Postgres (`lib/db/auth-schema.ts`).
+- `ALLOWED_EMAILS` is the admission boundary: comma-separated, case-insensitive, **fail-closed**. An unknown Google account cannot create a user.
+- `lib/auth/session.ts` — `requireUser()` for pages, `requireApiUser()` for route handlers (throws `AppError(401)`), `requireAdmin()` for `/admin`.
+- `proxy.ts` only checks that a session cookie exists for page routes (or that the development-only `IMPERSONATE_USER` switch is active). Every route handler and page verifies the real session and re-checks the allowlist, so removing an email locks out an existing cookie on its next request.
+- Data is isolated per account. `projects.owner_id` and `invoices.owner_id` are `NOT NULL`; `hour_entries` and `furniture_items` inherit ownership through their project. Repositories take `ownerId` in the constructor, so there is no unscoped query path. Never build services with a client-supplied id.
+- Invoice numbers are per account: the advisory lock key is `invoice_number:<ownerId>` and the unique index is `(owner_id, number)`.
+- Admin access is the `role` column on `user` (`admin`), and that column is the only source of truth. Set it directly in Postgres for now; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped repositories. The banner in `app/(app)/layout.tsx` is the way back.
+- There is no `legacy-owner` placeholder. The auth migration is a clean UUID baseline; an older database must be reset, not backfilled.
+- Google Cloud setup: External consent screen, publish it (basic scopes need no review), redirect URIs `http://localhost:3000/api/auth/callback/google` and `https://<domain>/api/auth/callback/google`.
 
 ## Blob storage
 
@@ -86,11 +99,14 @@ No test, lint, or format scripts exist.
 ## State management
 
 - Server state: React Query (`@tanstack/react-query`). Hooks call API routes via `fetch`.
+- Query keys are scoped to the signed-in user with `userScopedKey(userId, ...)` from `lib/query/session.ts`. `SessionProvider` clears the query cache whenever the session identity changes, so impersonation or account switching cannot reuse another account's cached data.
 - Client UI state: React `useState` / `useReducer` in feature components.
 - Forms: React Hook Form + Zod resolvers (`@hookform/resolvers`).
 
 ## Pages
 
+- `app/(app)/` — authenticated routes, wrapped by a layout that verifies the session.
+- `app/(auth)/sign-in` — public Google sign-in page.
 - `/` — redirects to `/projects`
 - `/projects` — project list (`ProjectsListClient`), create project via `ProjectOnboard`
 - `/projects/[id]` — project detail (Server Component fetches project + invoice history, passes to `ProjectClient` → `ProjectSummary`). The page fills the viewport and switches between **Pending** and **Invoices** tabs; only the active panel is mounted.
@@ -135,6 +151,8 @@ No test, lint, or format scripts exist.
 ## Environment
 
 - `.env.local` requires `DATABASE_URL`. Set `BLOB_DRIVER=local` for filesystem-backed invoice PDFs (stored in `.data/blobs/`). In production leave it unset (or set `vercel`); Vercel Blob needs `BLOB_READ_WRITE_TOKEN` or OIDC and private blob access. Do not commit real tokens.
+- Development-only auth bypass: set `IMPERSONATE_USER=<user uuid>` in `.env.local` and restart `pnpm dev` to act as that account without Google OAuth. Find UUIDs with `select id, email from "user";`. The variable is ignored in production; remove it (and restart) to return to Google sign-in. While active, Better Auth's admin impersonation endpoints are read-only/unavailable and sign-out is a no-op.
+- Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. After the first sign-in, set `user.role = 'admin'` in Postgres. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
 - `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, v0 internals, `tsconfig.tsbuildinfo`.
 
 ## Version control

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { UserMenu } from '@/components/features/auth/UserMenu';
 
 interface AppHeaderProps {
   /** Show the Maison wordmark instead of a back link. */
@@ -59,6 +60,7 @@ export function AppHeader({
             </span>
           )}
           {actions}
+          <UserMenu />
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
-import { invoiceService } from '@/lib/services/container';
-import { MarkInvoiceSchema } from '@/lib/validators/invoices';
 import { errorResponse } from '@/lib/api/errors';
+import { getApiServices } from '@/lib/services/container';
+import { MarkInvoiceSchema } from '@/lib/validators/invoices';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -8,6 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
+    const { invoiceService } = await getApiServices();
+
     const { invoiceId } = await params;
 
     const invoice = await invoiceService.getInvoice(invoiceId);
@@ -26,6 +28,8 @@ export async function PATCH(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
+    const { invoiceService } = await getApiServices();
+
     const { invoiceId } = await params;
     const body = await request.json();
     const input = MarkInvoiceSchema.parse(body);
