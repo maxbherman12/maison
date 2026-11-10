@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { authClient } from '@/lib/auth-client';
+import { authClient } from '@/lib/auth/client';
 
 interface SignInPanelProps {
   error?: string;
@@ -41,14 +42,7 @@ export function SignInPanel({ error, redirectTo }: SignInPanelProps) {
           Interior design project management. Sign in to continue.
         </p>
 
-        {message ? (
-          <p
-            role="alert"
-            className="mt-6 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            {message}
-          </p>
-        ) : null}
+        {message && <Alert className="mt-6">{message}</Alert>}
 
         <Button
           type="button"

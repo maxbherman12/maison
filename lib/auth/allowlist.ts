@@ -18,11 +18,7 @@ function parse(value: string | undefined): Set<string> {
   );
 }
 
-export function allowedEmails(): Set<string> {
-  return parse(process.env.ALLOWED_EMAILS);
-}
-
 export function isAllowedEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return allowedEmails().has(email.trim().toLowerCase());
+  return parse(process.env.ALLOWED_EMAILS).has(email.trim().toLowerCase());
 }

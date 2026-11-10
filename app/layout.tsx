@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
+import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
-import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'Maison',
@@ -14,15 +14,11 @@ export const viewport: Viewport = {
   themeColor: '#f7f6f2',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="flex h-full flex-col overflow-hidden antialiased">
-        <Providers>{children}</Providers>
+        {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

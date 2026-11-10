@@ -3,9 +3,8 @@ import { SignInPanel } from '@/components/features/auth/SignInPanel';
 import { getSession } from '@/lib/auth/session';
 
 function safeRedirect(value: string | undefined): string {
-  if (!value) return '/projects';
-  if (!value.startsWith('/') || value.startsWith('//')) return '/projects';
-  return value;
+  // Browsers treat `/\host` like `//host`, so both must be refused.
+  return value && /^\/(?![/\\])/.test(value) ? value : '/projects';
 }
 
 export default async function SignInPage({

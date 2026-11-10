@@ -1,10 +1,8 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { Alert } from './alert';
 import { Button } from './button';
 import { Sheet } from './sheet';
-
-type ConfirmTone = 'default' | 'destructive' | 'success';
 
 interface ConfirmDialogProps {
   title: string;
@@ -13,8 +11,15 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onClose: () => void;
   pending?: boolean;
-  tone?: ConfirmTone;
+  error?: string | null;
+  tone?: 'default' | 'destructive' | 'success';
 }
+
+const CONFIRM_CLASS = {
+  default: undefined,
+  destructive: 'bg-destructive text-white hover:bg-destructive/90',
+  success: 'bg-success text-success-foreground hover:bg-success/90',
+};
 
 export function ConfirmDialog({
   title,
@@ -23,6 +28,7 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
   pending = false,
+  error,
   tone = 'default',
 }: ConfirmDialogProps) {
   return (
@@ -30,6 +36,7 @@ export function ConfirmDialog({
       <p className="text-sm leading-relaxed text-muted-foreground">
         {description}
       </p>
+      {error && <Alert className="mt-4">{error}</Alert>}
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button
           type="button"
@@ -44,12 +51,7 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={pending}
-          className={cn(
-            'w-full sm:w-auto',
-            tone === 'destructive' &&
-              'bg-destructive text-white hover:bg-destructive/90',
-            tone === 'success' && 'bg-success text-success-foreground'
-          )}
+          className={`w-full sm:w-auto ${CONFIRM_CLASS[tone] ?? ''}`}
         >
           {pending ? 'Working…' : confirmLabel}
         </Button>

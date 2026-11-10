@@ -1,41 +1,29 @@
-'use client';
-
 import Link from 'next/link';
 import { FilePlus2 } from 'lucide-react';
-import type { Invoice, Project } from '@/lib/types';
-import { formatMoney } from '@/lib/types';
-import { buildBillableRows, buildPendingTotal } from '@/lib/billing';
-import { useProject } from '@/lib/query/projects';
-import { useInvoices } from '@/lib/query/invoices';
+import { buildBillableItems, totalCents } from '@/lib/domain/billing';
+import { formatMoneyWhole, sumCents } from '@/lib/domain/money';
+import type { InvoiceListItem, ProjectDetail } from '@/lib/domain/types';
+import { BackLink } from '@/components/layout/BackLink';
 import { buttonVariants } from '@/components/ui/button';
+import { StatTile } from '@/components/ui/stat-tile';
 import { cn } from '@/lib/utils';
-import { InvoicesGrid } from './InvoicesGrid';
+import { InvoicesTable } from './InvoicesTable';
 
-interface InvoiceIndexProps {
-  project: Project;
-  invoices: Invoice[];
-}
-
-export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
-  const { data: liveProject = project } = useProject(project.id, project);
-  const { data: liveInvoices = invoices } = useInvoices(project.id, invoices);
-
-  const pendingRows = buildBillableRows(liveProject);
-  const pendingTotal = buildPendingTotal(liveProject);
-  const invoicedTotal = liveInvoices.reduce(
-    (sum, invoice) => sum + invoice.total,
-    0
-  );
-
+export function InvoiceIndex({
+  project,
+  invoices,
+}: {
+  project: ProjectDetail;
+  invoices: InvoiceListItem[];
+}) {
+  const pending = buildBillableItems(project);
+  const canInvoice = pending.length > 0;
   const newInvoiceHref = `/projects/${project.id}/invoices/new`;
-  const canInvoice = pendingRows.length > 0;
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
       <div className="flex items-center justify-between gap-3 pb-3">
-        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          {project.client} · {project.project}
-        </p>
+        <BackLink href={`/projects/${project.id}`} label={project.name} />
         {canInvoice ? (
           <Link
             href={newInvoiceHref}
@@ -44,60 +32,40 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
             <FilePlus2 className="size-4" />
             New invoice
           </Link>
-        ) : liveInvoices.length > 0 ? (
+        ) : invoices.length > 0 ? (
           <span className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
             Everything invoiced
           </span>
         ) : null}
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-2xl bg-muted">
-        <Summary label="Pending" value={formatMoney(pendingTotal)} />
-        <Summary label="Invoices" value={String(liveInvoices.length)} />
-        <Summary label="Invoiced" value={formatMoney(invoicedTotal)} />
-      </div>
-
-      <div className="mt-4 flex min-h-0 flex-1 flex-col">
-        <InvoicesGrid
-          compact
-          fill
-          invoices={liveInvoices}
-          projectId={project.id}
-          emptyAction={
-            canInvoice ? (
-              <Link
-                href={newInvoiceHref}
-                className={cn(buttonVariants(), 'h-10 px-4')}
-              >
-                Create invoice
-              </Link>
-            ) : (
-              <Link
-                href={`/projects/${project.id}/log`}
-                className={cn(
-                  buttonVariants({ variant: 'outline' }),
-                  'h-10'
-                )}
-              >
-                Log work
-              </Link>
-            )
-          }
+      <div className="grid grid-cols-3 gap-2">
+        <StatTile label="Pending" value={formatMoneyWhole(totalCents(pending))} />
+        <StatTile label="Invoices" value={String(invoices.length)} />
+        <StatTile
+          label="Invoiced"
+          value={formatMoneyWhole(sumCents(invoices, (invoice) => invoice.totalCents))}
         />
       </div>
-    </div>
-  );
-}
 
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 px-3 py-3">
-      <span className="block truncate text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </span>
-      <strong className="mt-1 block truncate font-serif text-lg font-normal sm:text-xl">
-        {value}
-      </strong>
+      {invoices.length === 0 ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center">
+          <p className="font-serif text-xl">No invoices yet</p>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            Generated invoices appear here with their status, total, and dates.
+          </p>
+          <Link
+            href={canInvoice ? newInvoiceHref : `/projects/${project.id}/log`}
+            className={cn(buttonVariants(), 'mt-4 h-10 px-4')}
+          >
+            {canInvoice ? 'Create invoice' : 'Log work'}
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <InvoicesTable invoices={invoices} projectId={project.id} />
+        </div>
+      )}
     </div>
   );
 }

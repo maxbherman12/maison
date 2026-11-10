@@ -25,25 +25,28 @@ All feature work happens in a treehouse worktree.
 ## Architecture (layered)
 
 ```
-app/              → Next.js App Router (pages + API routes)
-lib/services/     → business logic (ProjectService, InvoiceService)
-lib/repository/   → data access (PostgresProjectRepository, PostgresInvoiceRepository)
-lib/storage/      → blob storage port + local/Vercel drivers
-lib/db/           → Drizzle schema + Postgres client
-lib/types/        → domain types + shared helpers
-lib/validators/   → Zod schemas
-lib/billing.ts     → billable ("pending") rows shared by the grid and the invoice flow
-lib/query/        → React Query hooks (calls API routes via fetch)
-components/ui/    → shadcn base primitives
-components/features/ → feature-specific client components
+app/                 → Next.js App Router. Server Components read through services. Only auth and the invoice PDF remain in app/api.
+lib/actions/         → 'use server' mutations: session → validate → service → revalidate → ActionResult
+lib/services/        → owner-bound business logic and Drizzle queries
+lib/invoices/pdf.ts  → invoice PDF rendering
+lib/storage/         → blob storage port + local/Vercel drivers
+lib/domain/          → pure, client-safe logic: money, dates, billing, furniture statuses, invoice status, types
+lib/validators/      → Zod schemas, one per form, shared by client and server
+lib/db/              → Drizzle schema + Postgres client
+lib/auth/            → Better Auth server/client, session helpers, allowlist
+components/ui/       → base primitives
+components/layout/   → AppShell, AppHeader, BackLink
+components/features/ → feature components
 ```
+
+Dependencies run one way: `app` and `components` → `actions` → `services` → `db`. Only `lib/services` and `lib/auth` import `db`.
 
 ## Commands
 
 - `pnpm dev` — dev server (Turbo)
-- `pnpm build` — production build (`next build`)
+- `pnpm build` — production build (`next build`); type errors fail it
 - `pnpm start` — production server
-- `npx tsc --noEmit` — type check (build skips type validation: `ignoreBuildErrors: true` in `next.config.mjs`)
+- `npx tsc --noEmit` — type check
 - `pnpm db:generate` — generate Drizzle migration from schema
 - `pnpm db:migrate` — run Drizzle migrations against the database
 - `pnpm db:studio` — open Drizzle Studio (local DB GUI)
@@ -57,25 +60,25 @@ No test, lint, or format scripts exist.
 
 ## Data layer
 
-- PostgreSQL via Drizzle ORM. Schema in `lib/db/schema.ts`, client in `lib/db/client.ts`.
-- Every primary key and row-reference column is a Postgres `uuid`. Domain inserts use `crypto.randomUUID()`; Better Auth is configured with `advanced.database.generateId: 'uuid'`.
-- `lib/db/client.ts` caps the `pg` pool at 5 connections per instance and attaches it to the Vercel runtime lifecycle (`attachDatabasePool`), so idle instances release connections before they suspend. The pool is cached on `globalThis` in development so hot reloads reuse it.
-- `lib/repository/postgres.ts` — `PostgresProjectRepository`, `PostgresInvoiceRepository` implement the repository interfaces using Drizzle + pg.
-- `lib/services/container.ts` — authenticated service entry points. `getPageServices()` (pages/Server Components) redirects to sign-in, `getApiServices()` (route handlers) throws `AppError(401)`. Both build repositories/services bound to the session user; raw owner-id construction is private.
-- `lib/services/projects.ts` — `ProjectService`: CRUD, log hours, add/update/delete furniture.
-- `lib/services/invoices.ts` — `InvoiceService`: renders a PDF via `pdf-lib`, stores it through the `BlobStore`, persists the invoice record.
-- `lib/validators/invoices.ts` — Zod schemas for invoice generation, project creation, hour/furniture logs.
-- API routes: `app/api/projects/*`, `app/api/invoices/route.ts`, and `app/api/invoices/[invoiceId]/pdf/route.ts` — validate with Zod, delegate to services.
+- PostgreSQL via Drizzle ORM. Schema in `lib/db/schema.ts` (auth tables in `lib/db/auth-schema.ts`), client in `lib/db/client.ts`.
+- **Money is integer cents** (`*_cents`). Dollars exist only in form inputs and formatters (`lib/domain/money.ts`). Never do arithmetic on dollars.
+- Every primary key and row-reference column is a Postgres `uuid`. Better Auth is configured with `advanced.database.generateId: 'uuid'`.
+- Domain types derive from the schema with `$inferSelect` in `lib/domain/types.ts`. `Invoice` omits `pathname` and `ownerId`; never select them into anything sent to the browser.
+- `lib/db/client.ts` caps the `pg` pool at 5 connections per instance and attaches it to the Vercel runtime lifecycle (`attachDatabasePool`). The pool is cached on `globalThis` in development.
+- `lib/services/index.ts` — `getServices()` is the single authenticated entry point and redirects to sign-in without a session. The factory behind it is private, so an owner id can only come from the session.
+- Services (`ProjectService`, `ChargeService`, `FurnitureService`, `InvoiceService`) take `ownerId` in the constructor. Writes to charges and furniture are one statement scoped by the `ownedProjectIds` subquery in `lib/services/scope.ts`. Throw `AppError` for every expected failure.
+- `lib/actions/*` — each action takes `unknown`, parses with a Zod schema, and runs inside `runAction`, which maps `AppError`/`ZodError` to `{ ok: false, error }`, hides anything unexpected, and revalidates the app.
+- `lib/validators/*` — one schema per form, used by the browser resolver (`raw: true`) and the action. Numeric inputs are strings; the dollars-to-cents transform runs only in the action's parse.
 
 ## Authentication and accounts
 
 - Better Auth (v1.7) with the Google provider. Users, sessions, and accounts live in the same Postgres (`lib/db/auth-schema.ts`).
 - `ALLOWED_EMAILS` is the admission boundary: comma-separated, case-insensitive, **fail-closed**. An unknown Google account cannot create a user.
-- `lib/auth/session.ts` — `requireUser()` for pages, `requireApiUser()` for route handlers (throws `AppError(401)`), `requireAdmin()` for `/admin`.
+- `lib/auth/session.ts` — `getSession()` (memoised per request), `requireSession()`, `requireUser()`, and `requireAdmin()` for `/admin`. Better Auth lives in `lib/auth/server.ts` and `lib/auth/client.ts`.
 - `proxy.ts` only checks that a session cookie exists for page routes (or that the development-only `IMPERSONATE_USER` switch is active). Every route handler and page verifies the real session and re-checks the allowlist, so removing an email locks out an existing cookie on its next request.
-- Data is isolated per account. `projects.owner_id` and `invoices.owner_id` are `NOT NULL`; `hour_entries` and `furniture_items` inherit ownership through their project. Repositories take `ownerId` in the constructor, so there is no unscoped query path. Never build services with a client-supplied id.
+- Data is isolated per account. `projects.owner_id` and `invoices.owner_id` are `NOT NULL`; `hour_entries` and `furniture_items` inherit ownership through their project. Services take `ownerId` in the constructor, so there is no unscoped query path. Never build services with a client-supplied id.
 - Invoice numbers are per account: the advisory lock key is `invoice_number:<ownerId>` and the unique index is `(owner_id, number)`.
-- Admin access is the `role` column on `user` (`admin`), and that column is the only source of truth. Set it directly in Postgres for now; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped repositories. The banner in `app/(app)/layout.tsx` is the way back.
+- Admin access is the `role` column on `user` (`admin`), and that column is the only source of truth. Set it directly in Postgres for now; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped services. The banner in `app/(app)/layout.tsx` is the way back.
 - There is no `legacy-owner` placeholder. The auth migration is a clean UUID baseline; an older database must be reset, not backfilled.
 - Google Cloud setup: External consent screen, publish it (basic scopes need no review), redirect URIs `http://localhost:3000/api/auth/callback/google` and `https://<domain>/api/auth/callback/google`.
 
@@ -85,7 +88,7 @@ No test, lint, or format scripts exist.
 - `lib/storage/local.ts` writes to `.data/blobs/` (override with `LOCAL_BLOB_DIR`). Used when `BLOB_DRIVER=local`.
 - `lib/storage/vercel.ts` uses private `@vercel/blob` blobs. Used when `BLOB_DRIVER=vercel` or unset.
 - `lib/storage/index.ts` selects the driver; unknown values throw at startup.
-- Invoice PDFs are served by `GET /api/invoices/[invoiceId]/pdf`. Never expose a blob pathname or URL to the browser.
+- Invoice PDFs are stored at `invoices/<ownerId>/<invoiceId>.pdf` and served by `GET /api/invoices/[invoiceId]/pdf`. Never expose a blob pathname or URL to the browser.
 - `.data/` is gitignored.
 
 ## Local database setup
@@ -98,48 +101,49 @@ No test, lint, or format scripts exist.
 
 ## State management
 
-- Server state: React Query (`@tanstack/react-query`). Hooks call API routes via `fetch`.
-- Query keys are scoped to the signed-in user with `userScopedKey(userId, ...)` from `lib/query/session.ts`. `SessionProvider` clears the query cache whenever the session identity changes, so impersonation or account switching cannot reuse another account's cached data.
-- Client UI state: React `useState` / `useReducer` in feature components.
-- Forms: React Hook Form + Zod resolvers (`@hookform/resolvers`).
+- Server state lives in Server Components. There is no client data cache. After a mutation, `runAction` calls `revalidatePath('/', 'layout')` and the new props arrive in the action's response.
+- Call actions from client components with `useAction()` (`lib/actions/use-action.ts`), which provides `run`, `pending`, and `error`. Use `useOptimistic` over server props for instant feedback; the furniture board is the example.
+- Store ids in client state and derive objects from props, so a sheet closes by itself if its item disappears. Do not use effects to sync derived state.
+- Forms: React Hook Form + `zodResolver(schema, undefined, { raw: true })`. Shared field sets read the form through `FormProvider`.
 
 ## Pages
 
-- `app/(app)/` — authenticated routes, wrapped by a layout that verifies the session.
+- `app/(app)/` — authenticated routes, wrapped by a layout that verifies the session, plus `error.tsx`, `loading.tsx`, and `not-found.tsx`.
 - `app/(auth)/sign-in` — public Google sign-in page.
 - `/` — redirects to `/projects`
-- `/projects` — project list (`ProjectsListClient`), create project via `ProjectOnboard`
-- `/projects/[id]` — project detail (Server Component fetches project + invoice history, passes to `ProjectClient` → `ProjectSummary`). The page fills the viewport and switches between **Pending** and **Invoices** tabs; only the active panel is mounted.
-- `/projects/[id]/log` — log hours and furniture
+- `/projects` — project list; `/projects/new` — create a project
+- `/projects/[id]` — project overview. Fills the viewport and switches between **Pending** and **Invoices** tabs.
+- `/projects/[id]/log` — log hours, furniture, and custom charges
 - `/projects/[id]/board` — furniture board
-- `/projects/[id]/invoices` — invoice ledger with a compact summary strip and an internally scrolling list
+- `/projects/[id]/invoices` — invoice ledger with a summary strip and an internally scrolling list
 - `/projects/[id]/invoices/new` — invoice composer; preview and item panels scroll independently, with the total/generate footer outside both
 - `/projects/[id]/invoices/[invoiceId]` — invoice detail; the document scrolls inside its own panel
+- `/settings` — placeholder settings page
+- `/admin` — admin-only account list with impersonation
+- Routes under `/projects/[id]` load through `load-project.ts`, which renders not-found for a bad or unowned id.
 
 ## Layout and scrolling
 
-- `AppShell` / `ProjectShell` render the app's single `<main>`. By default `<main>` scrolls.
-- Pass `fill` to `AppShell` / `ProjectShell` for viewport-first routes. The shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
-- `fill` is used by project detail, invoice index, composer, and invoice detail. Forms, the board, and the project list keep the default page scroll.
-- Do not repeat the app-header title as a page `<h1>` on viewport-first routes.
+- `AppShell` renders the app's single `<main>` and owns the menu bar (`AppHeader`), which is identical on every page: the Maison wordmark (→ `/projects`) on the left and the account menu on the right. Routes never pass anything into the header.
+- Pages own their own navigation and identity instead: back links (`components/layout/BackLink.tsx`), headings, and context live in page content, not the header.
+- By default `<main>` scrolls. Pass `fill` to `AppShell` for viewport-first routes; the shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
+- `fill` is used by project overview, invoice index, composer, and invoice detail, and sets their compact padding. Forms, the board, and the project list keep the default page scroll.
 - Use `overflow-y-auto overscroll-contain` only on the panel that genuinely needs to scroll. Do not add full-height page wrappers; the shell owns the viewport.
 
 ## Billing model
 
-- Hours and furniture are billable items. `hour_entries.invoice_id` / `furniture_items.invoice_id` point at the invoice they were billed on; `null` means still pending.
-- `lib/billing.ts` derives the pending rows and the invoice line items from the same source, so the grid and the invoice always agree.
-- `outstanding` on a project is the total of its *uninvoiced* items.
-- The invoice total is recomputed server-side from the line items; the client-sent total is advisory.
+- Billable items are `charges` and `furniture_items`. A charge with `hours` is logged time; a charge with null `hours` is a flat custom charge. `invoice_id` points at the invoice it was billed on; `null` means pending.
+- `buildBillableItems` in `lib/domain/billing.ts` derives pending items for the pending list, the composer, and generated invoices, so they always agree.
+- `outstanding` is a SQL aggregate of uninvoiced items. Nothing stores it.
+- Invoiced items are locked: only furniture status can change. Services return a 409 for anything else.
+- `InvoiceService.generate` is one transaction: lock per owner, lock the pending rows, recompute amounts from the database, allocate the number, snapshot the bill-to details and line items, render the PDF, upload, commit. The client only sends item ids.
+- Invoice numbers are integers per account, displayed with `formatInvoiceNumber`.
+- Invoice status is derived from `sent_at`, `due_at`, and `paid_at`.
 
-## Grids
+## Tables
 
-- AG Grid Community (`ag-grid-react`, `ag-grid-community`). `components/features/projects/ProjectItemsGrid.tsx` is the wrapper (toolbar + data), `ProjectItemsGridInner.tsx` holds the grid itself and is loaded client-side only via `next/dynamic`.
-- Always set `cellDataType` on columns. AG Grid infers it from the first row's value, so a column starting with a date renders later non-date values as blank.
-- The AG Grid cell is `display: block` with a tall line-height, so cell renderers should use `absolute inset-0 flex items-center` to centre themselves.
-- Pending rows are actionable: row click, Enter/Space, and the pinned Open cell all call `onOpenItem`; the pinned total row is ignored.
-- `ProjectItemsGrid` accepts `fill`. In fill mode the grid sizes to its rows up to the available height (`maxHeight: 100%`) and scrolls its own rows; the pinned total stays at the grid bottom. Keep every ancestor in the flex chain `min-h-0`.
-- Compact mobile columns are tuned to fit 375–390 px without horizontal clipping. Re-check the Type, Description, Amount, and pinned Open widths together when changing one.
-- `InvoicesGrid` accepts `compact` for tighter empty states and `fill` when it should own its list scroll. The project detail Invoices tab keeps its own scroll container around the non-fill grid.
+- `PendingItemsTable` and `InvoicesTable` are semantic tables on desktop and cards on phones, switched at `md`.
+- Rows must be keyboard reachable through a real button or link, not only a row click.
 
 ## Styling
 
@@ -151,9 +155,9 @@ No test, lint, or format scripts exist.
 ## Environment
 
 - `.env.local` requires `DATABASE_URL`. Set `BLOB_DRIVER=local` for filesystem-backed invoice PDFs (stored in `.data/blobs/`). In production leave it unset (or set `vercel`); Vercel Blob needs `BLOB_READ_WRITE_TOKEN` or OIDC and private blob access. Do not commit real tokens.
-- Development-only auth bypass: set `IMPERSONATE_USER=<user uuid>` in `.env.local` and restart `pnpm dev` to act as that account without Google OAuth. Find UUIDs with `select id, email from "user";`. The variable is ignored in production; remove it (and restart) to return to Google sign-in. While active, Better Auth's admin impersonation endpoints are read-only/unavailable and sign-out is a no-op.
+- Development-only auth bypass: set `IMPERSONATE_USER=<user uuid>` in `.env.local` and restart `pnpm dev` to act as that account without Google OAuth. Find UUIDs with `select id, email from "user";`. The variable is ignored in production; remove it (and restart) to return to Google sign-in. While active, the admin page is read-only and sign-out has no effect.
 - Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. After the first sign-in, set `user.role = 'admin'` in Postgres. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
-- `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, v0 internals, `tsconfig.tsbuildinfo`.
+- `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, `tsconfig.tsbuildinfo`.
 
 ## Version control
 
@@ -163,7 +167,6 @@ No test, lint, or format scripts exist.
 ## What to skip
 
 - No tests, lint, CI, pre-commit, codegen exist. Do not invent commands for them.
-- `Untitled` file at root was a placeholder; it has been removed.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
