@@ -18,19 +18,27 @@ import {
 export class ChargeService {
   constructor(private readonly ownerId: string) {}
 
-  async logHours(projectId: string, input: LogHoursInput): Promise<void> {
+  async logHours(projectId: string, input: LogHoursInput): Promise<{ id: string }> {
     const project = await requireOwnedProject(this.ownerId, projectId);
 
-    await db.insert(charges).values({
-      ...input,
-      projectId,
-      amountCents: chargeForHours(input.hours, project.hourlyRateCents),
-    });
+    const [charge] = await db
+      .insert(charges)
+      .values({
+        ...input,
+        projectId,
+        amountCents: chargeForHours(input.hours, project.hourlyRateCents),
+      })
+      .returning({ id: charges.id });
+    return charge;
   }
 
-  async addFlat(projectId: string, input: FlatChargeInput): Promise<void> {
+  async addFlat(projectId: string, input: FlatChargeInput): Promise<{ id: string }> {
     await requireOwnedProject(this.ownerId, projectId);
-    await db.insert(charges).values({ ...input, projectId });
+    const [charge] = await db
+      .insert(charges)
+      .values({ ...input, projectId })
+      .returning({ id: charges.id });
+    return charge;
   }
 
   async update(id: string, input: EditHoursInput | FlatChargeInput): Promise<void> {

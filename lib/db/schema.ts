@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { BILLABLE_KINDS } from '../domain/billing';
 import { FURNITURE_STATUSES } from '../domain/furniture';
+import { PAINT_NAMES } from '../domain/paints';
 import { user } from './auth-schema';
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -21,6 +22,7 @@ const createdAt = () => timestamptz('created_at').notNull().defaultNow();
 
 export const furnitureStatus = pgEnum('furniture_status', FURNITURE_STATUSES);
 export const billableKind = pgEnum('billable_kind', BILLABLE_KINDS);
+export const paint = pgEnum('paint', PAINT_NAMES);
 
 export const projects = pgTable(
   'projects',
@@ -33,6 +35,7 @@ export const projects = pgTable(
     name: text('name').notNull(),
     address: text('address').notNull().default(''),
     hourlyRateCents: integer('hourly_rate_cents').notNull(),
+    paint: paint('paint').notNull().default('verdigris'),
     createdAt: createdAt(),
   },
   (table) => [

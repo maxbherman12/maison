@@ -1,158 +1,215 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, CreditCard, Package, Timer } from 'lucide-react';
-import type { Project } from '@/lib/domain/types';
-import { cn } from '@/lib/utils';
-import { BackLink } from '@/components/layout/BackLink';
+import { useRouter } from 'next/navigation';
+import { deleteCharge } from '@/lib/actions/charges';
+import { deleteFurniture } from '@/lib/actions/furniture';
+import { useAction } from '@/lib/actions/use-action';
+import { buildBillableItems, totalCents } from '@/lib/domain/billing';
+import { todayLocal } from '@/lib/domain/dates';
+import { formatMoneyWhole } from '@/lib/domain/money';
+import type { ProjectDetail } from '@/lib/domain/types';
+import { Confirmation } from '@/components/layout/Confirmation';
+import { FlowBack, FlowBody } from '@/components/layout/FlowPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { AddFurnitureForm } from './AddFurnitureForm';
-import { CustomChargeForm } from './CustomChargeForm';
-import { LogHoursForm } from './LogHoursForm';
+import { LogChargeForm, LogFurnitureForm } from './LogForms';
+import { HoursStep, TaskStep } from './LogHoursForm';
 
-type LogType = 'hours' | 'furniture' | 'custom';
-type Step = 'type' | 'details' | 'done';
+type LogType = 'hours' | 'furniture' | 'charge';
+type Screen = 'type' | 'hours' | 'task' | 'furniture' | 'charge';
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: 'type', label: 'Type' },
-  { id: 'details', label: 'Details' },
-  { id: 'done', label: 'Done' },
-];
-
-const LOG_TYPES: {
-  type: LogType;
-  icon: ReactNode;
-  title: string;
-  text: string;
-}[] = [
-  {
-    type: 'hours',
-    icon: <Timer className="size-5 text-primary" />,
-    title: 'Hours',
-    text: 'Time spent on this project',
-  },
-  {
-    type: 'furniture',
-    icon: <Package className="size-5 text-primary" />,
-    title: 'Furniture',
-    text: 'Purchases and trade pricing',
-  },
-  {
-    type: 'custom',
-    icon: <CreditCard className="size-5 text-primary" />,
-    title: 'Custom charge',
-    text: 'One-time expense',
-  },
-];
-
-const FORMS = {
-  hours: LogHoursForm,
-  furniture: AddFurnitureForm,
-  custom: CustomChargeForm,
+const PATHS: Record<LogType, Screen[]> = {
+  hours: ['type', 'hours', 'task'],
+  furniture: ['type', 'furniture'],
+  charge: ['type', 'charge'],
 };
 
-export function ProjectLog({ project }: { project: Project }) {
-  const [type, setType] = useState<LogType | null>(null);
-  const [step, setStep] = useState<Step>('type');
-  const stepIndex = STEPS.findIndex((item) => item.id === step);
-  const Form = type && FORMS[type];
+const OPTIONS: { type: LogType; title: string; text: string }[] = [
+  { type: 'hours', title: 'Time', text: 'Hours on this project' },
+  { type: 'furniture', title: 'Furniture', text: 'A purchase, at trade price' },
+  { type: 'charge', title: 'Other charge', text: 'A one-time expense' },
+];
+
+export interface SavedEntry {
+  id: string;
+  kind: 'charge' | 'furniture';
+  amountCents: number;
+  summary: string;
+}
+
+/** One question per screen: what is being logged, then only what that needs. */
+export function ProjectLog({
+  project,
+  furnitureOnly,
+}: {
+  project: ProjectDetail;
+  furnitureOnly: boolean;
+}) {
+  const closeHref = `/projects/${project.id}`;
+  const firstStep = furnitureOnly ? 1 : 0;
+
+  const [type, setType] = useState<LogType>(furnitureOnly ? 'furniture' : 'hours');
+  const [step, setStep] = useState(firstStep);
+  const [hours, setHours] = useState(2);
+  const [date, setDate] = useState(todayLocal);
+  const [saved, setSaved] = useState<SavedEntry | null>(null);
+
+  if (saved) {
+    return (
+      <Saved
+        project={project}
+        saved={saved}
+        onLogAnother={() => {
+          setSaved(null);
+          setStep(0);
+        }}
+      />
+    );
+  }
+
+  const path = PATHS[type];
+  const screen = path[step];
+  const header = (
+    <>
+      <div className="flex items-center justify-between">
+        {step === firstStep ? (
+          <FlowBack href={closeHref} />
+        ) : (
+          <FlowBack onClick={() => setStep(step - 1)} />
+        )}
+        <span className="text-label text-muted-foreground">
+          Step {step - firstStep + 1} of {path.length - firstStep}
+        </span>
+      </div>
+      <div className="flex gap-1.5 pt-1" aria-hidden="true">
+        {path.slice(firstStep).map((name, index) => (
+          <i
+            key={name}
+            className={
+              index <= step - firstStep ? 'h-0.5 flex-1 bg-primary' : 'h-0.5 flex-1 bg-border'
+            }
+          />
+        ))}
+      </div>
+    </>
+  );
+
+  if (screen === 'type') {
+    return (
+      <FlowBody>
+        {header}
+        <h2 className="pt-3 pb-2.5 font-serif text-heading font-normal">
+          What are you logging?
+        </h2>
+        {OPTIONS.map((option) => (
+          <button
+            key={option.type}
+            type="button"
+            onClick={() => {
+              setType(option.type);
+              setStep(1);
+            }}
+            className="flex items-baseline justify-between gap-3 py-3.5 text-left font-serif text-name"
+          >
+            {option.title}
+            <small className="font-sans text-label text-muted-foreground">
+              {option.text}
+            </small>
+          </button>
+        ))}
+      </FlowBody>
+    );
+  }
+
+  const shared = { project, header, onSaved: setSaved };
+
+  switch (screen) {
+    case 'hours':
+      return (
+        <HoursStep
+          {...shared}
+          hours={hours}
+          date={date}
+          onHoursChange={setHours}
+          onDateChange={setDate}
+          onNext={() => setStep(2)}
+        />
+      );
+    case 'task':
+      return <TaskStep {...shared} hours={hours} date={date} />;
+    case 'furniture':
+      return <LogFurnitureForm {...shared} />;
+    case 'charge':
+      return <LogChargeForm {...shared} />;
+  }
+}
+
+function Saved({
+  project,
+  saved,
+  onLogAnother,
+}: {
+  project: ProjectDetail;
+  saved: SavedEntry;
+  onLogAnother: () => void;
+}) {
+  const router = useRouter();
+  const undo = useAction();
+  const closeHref = `/projects/${project.id}`;
+  const remove = saved.kind === 'charge' ? deleteCharge : deleteFurniture;
+  const outstanding = totalCents(buildBillableItems(project));
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <BackLink href={`/projects/${project.id}`} label={project.name} />
-
-      <ol className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {STEPS.map((item, index) => (
-          <li key={item.id} className="flex items-center gap-2">
-            <span
-              className={cn(
-                'flex size-7 items-center justify-center rounded-full text-xs font-medium',
-                index <= stepIndex
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {index < stepIndex ? <Check className="size-3.5" /> : index + 1}
-            </span>
-            <span
-              className={cn(
-                'text-xs',
-                index === stepIndex
-                  ? 'font-medium text-foreground'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {item.label}
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      {step === 'type' && (
+    <Confirmation
+      eyebrow={`Added to ${project.client}`}
+      headline={
+        <p className="font-serif text-[clamp(4rem,22vw,6.5rem)] leading-none tabular-nums">
+          {formatMoneyWhole(saved.amountCents)}
+        </p>
+      }
+      detail={
+        undo.error ??
+        `${saved.summary} ${formatMoneyWhole(outstanding)} is now ready to invoice.`
+      }
+      links={
         <>
-          <h1 className="mt-6 font-serif text-4xl">What would you like to log?</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Tap an option to add it to <strong>{project.name}</strong>.
-          </p>
-          <div className="mt-7 grid gap-3">
-            {LOG_TYPES.map((option) => (
-              <button
-                key={option.type}
-                type="button"
-                onClick={() => {
-                  setType(option.type);
-                  setStep('details');
-                }}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary p-5 text-left transition-colors hover:bg-accent"
-              >
-                <span className="flex items-center gap-3">
-                  {option.icon}
-                  <span>
-                    <span className="block font-serif text-xl">{option.title}</span>
-                    <span className="block text-sm text-muted-foreground">
-                      {option.text}
-                    </span>
-                  </span>
-                </span>
-                <ArrowRight className="size-5 shrink-0 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
+          <Link
+            href={`${closeHref}/items/${saved.id}`}
+            className="inline-flex min-h-11 items-center text-label underline underline-offset-3"
+          >
+            Edit
+          </Link>
+          <button
+            type="button"
+            disabled={undo.pending}
+            onClick={() =>
+              undo.run(() => remove(saved.id), () => router.push(closeHref))
+            }
+            className="min-h-11 text-label underline underline-offset-3"
+          >
+            Undo
+          </button>
         </>
-      )}
-
-      {step === 'details' && Form && (
-        <Form
-          project={project}
-          onBack={() => setStep('type')}
-          onSaved={() => setStep('done')}
-        />
-      )}
-
-      {step === 'done' && (
-        <div className="animate-in fade-in slide-in-from-right-3 duration-300">
-          <h1 className="mt-6 font-serif text-4xl">Saved</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The entry has been added to <strong>{project.name}</strong>.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setStep('type')}
-              className="w-full sm:w-auto"
-            >
-              Log another
-            </Button>
-            <Link
-              href={`/projects/${project.id}`}
-              className={cn(buttonVariants(), 'w-full sm:w-auto')}
-            >
-              Back to project
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+      }
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="onPaintOutline"
+            size="xl"
+            onClick={onLogAnother}
+          >
+            Log another
+          </Button>
+          <Link
+            href={closeHref}
+            className={buttonVariants({ variant: 'onPaint', size: 'xl' })}
+          >
+            Done
+          </Link>
+        </>
+      }
+    />
   );
 }

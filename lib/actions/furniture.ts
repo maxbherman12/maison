@@ -1,20 +1,16 @@
 'use server';
 
 import { IdSchema } from '@/lib/validators/fields';
-import {
-  AddFurnitureSchema,
-  EditFurnitureSchema,
-  FurnitureStatusSchema,
-} from '@/lib/validators/furniture';
+import { FurnitureSchema, FurnitureStatusSchema } from '@/lib/validators/furniture';
 import type { ActionResult } from './result';
 import { runAction } from './run-action';
 
 export async function addFurniture(
   projectId: unknown,
   input: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string }>> {
   return runAction(({ furniture }) =>
-    furniture.add(IdSchema.parse(projectId), AddFurnitureSchema.parse(input))
+    furniture.add(IdSchema.parse(projectId), FurnitureSchema.parse(input))
   );
 }
 
@@ -23,7 +19,7 @@ export async function updateFurniture(
   input: unknown
 ): Promise<ActionResult> {
   return runAction(({ furniture }) =>
-    furniture.update(IdSchema.parse(id), EditFurnitureSchema.parse(input))
+    furniture.update(IdSchema.parse(id), FurnitureSchema.parse(input))
   );
 }
 

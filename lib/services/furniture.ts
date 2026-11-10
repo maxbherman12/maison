@@ -4,10 +4,7 @@ import { db } from '@/lib/db/client';
 import { furnitureItems } from '@/lib/db/schema';
 import type { FurnitureStatus } from '@/lib/domain/furniture';
 import { AppError } from '@/lib/errors';
-import type {
-  AddFurnitureInput,
-  EditFurnitureInput,
-} from '@/lib/validators/furniture';
+import type { FurnitureInput } from '@/lib/validators/furniture';
 import {
   ITEM_LOCKED_MESSAGE,
   ownedProjectIds,
@@ -17,12 +14,16 @@ import {
 export class FurnitureService {
   constructor(private readonly ownerId: string) {}
 
-  async add(projectId: string, input: AddFurnitureInput): Promise<void> {
+  async add(projectId: string, input: FurnitureInput): Promise<{ id: string }> {
     await requireOwnedProject(this.ownerId, projectId);
-    await db.insert(furnitureItems).values({ ...input, projectId });
+    const [item] = await db
+      .insert(furnitureItems)
+      .values({ ...input, projectId })
+      .returning({ id: furnitureItems.id });
+    return item;
   }
 
-  async update(id: string, input: EditFurnitureInput): Promise<void> {
+  async update(id: string, input: FurnitureInput): Promise<void> {
     const updated = await db
       .update(furnitureItems)
       .set(input)

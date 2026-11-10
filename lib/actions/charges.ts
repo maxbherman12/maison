@@ -12,7 +12,7 @@ import { runAction } from './run-action';
 export async function logHours(
   projectId: unknown,
   input: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string }>> {
   return runAction(({ charges }) =>
     charges.logHours(IdSchema.parse(projectId), LogHoursSchema.parse(input))
   );
@@ -21,7 +21,7 @@ export async function logHours(
 export async function addFlatCharge(
   projectId: unknown,
   input: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string }>> {
   return runAction(({ charges }) =>
     charges.addFlat(IdSchema.parse(projectId), FlatChargeSchema.parse(input))
   );

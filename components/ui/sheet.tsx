@@ -36,22 +36,22 @@ export function Sheet({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-40 bg-foreground/30" />
+        <Dialog.Backdrop className="fixed inset-0 z-40 bg-foreground/36" />
         <Dialog.Viewport className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
           <Dialog.Popup
             className={cn(
-              'max-h-sheet w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-card p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))] outline-none sm:rounded-3xl',
+              'max-h-sheet w-full overflow-y-auto overscroll-contain bg-card p-6 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))] outline-none motion-safe:animate-in motion-safe:slide-in-from-bottom-8',
               size === 'wide' ? 'max-w-lg' : 'max-w-md'
             )}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 {eyebrow && (
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="text-label text-muted-foreground">
                     {eyebrow}
                   </span>
                 )}
-                <Dialog.Title className="mt-1 font-serif text-3xl leading-tight">
+                <Dialog.Title className="mt-1 font-serif text-name font-normal">
                   {title}
                 </Dialog.Title>
                 {description && (
@@ -62,7 +62,7 @@ export function Sheet({
               </div>
               <Dialog.Close
                 aria-label="Close"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="size-4" />
               </Dialog.Close>

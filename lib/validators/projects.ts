@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PAINT_NAMES } from '@/lib/domain/paints';
 import { moneyField, optionalText, requiredText } from './fields';
 
 export const ProjectSchema = z
@@ -7,6 +8,7 @@ export const ProjectSchema = z
     name: requiredText('Project name is required'),
     address: optionalText,
     hourlyRate: moneyField('Hourly rate must be greater than zero', 'positive'),
+    paint: z.enum(PAINT_NAMES),
   })
   .transform(({ hourlyRate, ...project }) => ({
     ...project,

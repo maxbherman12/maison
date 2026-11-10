@@ -15,6 +15,9 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-jost), 'Avenir Next', 'Century Gothic', sans-serif;
+  --font-serif: var(--font-italiana), Didot, 'Bodoni 72', Georgia, serif;
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -27,7 +30,6 @@
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
-  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
@@ -37,83 +39,107 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
 
-  --color-tone-neutral-bg: var(--tone-neutral-bg);
-  --color-tone-neutral-fg: var(--tone-neutral-fg);
-  --color-tone-neutral-dot: var(--tone-neutral-dot);
-  --color-tone-brand-bg: var(--tone-brand-bg);
-  --color-tone-brand-fg: var(--tone-brand-fg);
-  --color-tone-brand-dot: var(--tone-brand-dot);
-  --color-tone-success-bg: var(--tone-success-bg);
-  --color-tone-success-fg: var(--tone-success-fg);
-  --color-tone-success-dot: var(--tone-success-dot);
-  --color-tone-info-bg: var(--tone-info-bg);
-  --color-tone-info-fg: var(--tone-info-fg);
-  --color-tone-info-dot: var(--tone-info-dot);
   --color-tone-warning-bg: var(--tone-warning-bg);
   --color-tone-warning-fg: var(--tone-warning-fg);
   --color-tone-warning-dot: var(--tone-warning-dot);
-  --color-tone-danger-bg: var(--tone-danger-bg);
-  --color-tone-danger-fg: var(--tone-danger-fg);
-  --color-tone-danger-dot: var(--tone-danger-dot);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+}
+
+/* The one type scale. Italiana for names and amounts, Jost for the rest. */
+@theme {
+  --text-hero: 6.5rem;
+  --text-hero--line-height: 1;
+  --text-amount: 3.25rem;
+  --text-amount--line-height: 1;
+  --text-heading: 2.25rem;
+  --text-heading--line-height: 1.05;
+  --text-name: 1.75rem;
+  --text-name--line-height: 1.1;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.35;
+
+  --ease-gallery: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --animate-rise: rise 0.55s var(--ease-gallery) both;
+  --animate-paint-down: paint-down 0.55s var(--ease-gallery);
+  --animate-paint-up: paint-up 0.62s var(--ease-gallery);
+  --animate-bar-grow: bar-grow 0.62s var(--ease-gallery) both;
+  --animate-drawer: drawer 0.42s var(--ease-gallery);
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  @keyframes paint-down {
+    from {
+      clip-path: inset(0 0 100% 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+  @keyframes paint-up {
+    from {
+      clip-path: inset(100% 0 0 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+  @keyframes bar-grow {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  @keyframes drawer {
+    from {
+      transform: translateX(100%);
+    }
+  }
 }
 
 /*
  * Maison is a single light theme. Do not add a `.dark` block or a
- * `prefers-color-scheme` override here: the warm palette below is the one and
- * only source of colour for the app.
+ * `prefers-color-scheme` override here. A client's paint overrides `--primary`
+ * through `paintStyle`, and nothing else on the page changes color.
  */
 :root {
   color-scheme: light;
 
-  --background: #f7f6f2;
-  --foreground: #292923;
-  --card: #fffefa;
-  --card-foreground: #292923;
-  --popover: #fffefa;
-  --popover-foreground: #292923;
-  --primary: #bd765b;
+  --background: #ffffff;
+  --foreground: #16171a;
+  --card: #ffffff;
+  --card-foreground: #16171a;
+  --popover: #ffffff;
+  --popover-foreground: #16171a;
+  --primary: #16171a;
   --primary-foreground: #ffffff;
-  --primary-hover: #a9573d;
-  --secondary: #fbfaf7;
-  --secondary-foreground: #292923;
-  --muted: #ece9e0;
-  --muted-foreground: #85857a;
-  --accent: #f1e6df;
-  --accent-foreground: #a9573d;
-  --destructive: #a9573d;
-  --success: #6f8062;
+  --secondary: #f3f3f0;
+  --secondary-foreground: #16171a;
+  --muted: #f3f3f0;
+  --muted-foreground: #68696d;
+  --accent: #f3f3f0;
+  --accent-foreground: #16171a;
+  --destructive: #c8321f;
+  --success: #1f5e54;
   --success-foreground: #ffffff;
-  --border: #deddd5;
-  --input: #deddd5;
-  --ring: #bd765b;
-  --radius: 0.625rem;
+  --border: #e4e4e0;
+  --input: #16171a;
+  --ring: #16171a;
+  --radius: 0;
 
-  --tone-neutral-bg: #ece9e0;
-  --tone-neutral-fg: #6b564a;
-  --tone-neutral-dot: #85857a;
-  --tone-brand-bg: #f1e6df;
-  --tone-brand-fg: #a9573d;
-  --tone-brand-dot: #bd765b;
-  --tone-success-bg: #e9eee4;
-  --tone-success-fg: #5f6f53;
-  --tone-success-dot: #7f8f72;
-  --tone-info-bg: #e7eef2;
-  --tone-info-fg: #526b7b;
-  --tone-info-dot: #6f8a9c;
   --tone-warning-bg: #f4eddd;
   --tone-warning-fg: #8c6a34;
   --tone-warning-dot: #b58a4a;
-  --tone-danger-bg: #f1dcd4;
-  --tone-danger-fg: #a9573d;
-  --tone-danger-dot: #a9573d;
 }
 
 @layer base {
@@ -126,6 +152,6 @@
     overscroll-behavior: none;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
   }
 }

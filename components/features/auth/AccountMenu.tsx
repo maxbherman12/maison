@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LayoutDashboard, LogOut, Settings, UserRound } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { useClientSession } from '@/lib/auth/session-provider';
+import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,7 +21,7 @@ import {
  * banner owns returning to the admin account, so this menu does not offer a
  * sign-out.
  */
-export function AccountMenu() {
+export function AccountMenu({ className }: { className?: string }) {
   const router = useRouter();
   const { isAdmin, isImpersonating } = useClientSession();
 
@@ -35,9 +36,13 @@ export function AccountMenu() {
       <DropdownMenuTrigger
         aria-label="Account menu"
         title="Account"
-        className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+        className={cn(
+          buttonVariants({ variant: 'ghost', size: 'icon-lg' }),
+          'hover:bg-transparent',
+          className
+        )}
       >
-        <UserRound className="size-5" aria-hidden="true" />
+        <UserRound className="size-[22px]" strokeWidth={1.3} aria-hidden="true" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>

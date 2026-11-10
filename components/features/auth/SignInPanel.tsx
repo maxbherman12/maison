@@ -36,9 +36,9 @@ export function SignInPanel({ error, redirectTo }: SignInPanelProps) {
 
   return (
     <main className="flex min-h-0 flex-1 items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
-        <p className="font-serif text-3xl tracking-tight">Maison</p>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <div className="w-full max-w-sm">
+        <p className="font-serif text-amount">Maison</p>
+        <p className="mt-3 text-muted-foreground">
           Interior design project management. Sign in to continue.
         </p>
 
@@ -46,6 +46,7 @@ export function SignInPanel({ error, redirectTo }: SignInPanelProps) {
 
         <Button
           type="button"
+          size="xl"
           className="mt-8 w-full"
           disabled={pending}
           onClick={handleSignIn}
@@ -53,7 +54,7 @@ export function SignInPanel({ error, redirectTo }: SignInPanelProps) {
           {pending ? 'Redirecting…' : 'Continue with Google'}
         </Button>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <p className="mt-4 text-center text-label text-muted-foreground">
           Access is limited to invited accounts.
         </p>
       </div>

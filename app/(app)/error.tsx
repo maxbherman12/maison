@@ -18,7 +18,7 @@ export default function AppError({
   return (
     <AppShell>
       <div className="mx-auto max-w-md py-16 text-center">
-        <h1 className="font-serif text-3xl">Something went wrong</h1>
+        <h1 className="font-serif text-heading font-normal">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Your work is safe. Try again, and if this keeps happening, reload the
           page.

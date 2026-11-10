@@ -1,22 +1,28 @@
+'use client';
+
 import Link from 'next/link';
 import { AccountMenu } from '@/components/features/auth/AccountMenu';
+import { cn } from '@/lib/utils';
+import { HeaderNav, useHidesPhoneChrome } from './AppNav';
 
-/**
- * The application's single menu bar, identical on every page: the Maison
- * wordmark on the left, the account menu on the right. Nothing page-specific
- * lives here — routes own their back links, headings, and context. Only
- * `AppShell` renders this component.
- */
+/** The wordmark, main pages, and account menu. Only `AppShell` renders this. */
 export function AppHeader() {
+  const hiddenOnPhone = useHidesPhoneChrome();
+
   return (
-    <header className="shrink-0 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-        <Link
-          href="/projects"
-          className="font-serif text-2xl tracking-tight transition-colors hover:text-primary"
-        >
-          Maison
-        </Link>
+    <header
+      className={cn(
+        'shrink-0 pt-[env(safe-area-inset-top)] md:border-b md:border-border',
+        hiddenOnPhone && 'max-md:hidden'
+      )}
+    >
+      <div className="flex h-14 items-center justify-between pr-3 pl-6 md:h-15 md:pr-4.5 md:pl-7">
+        <div className="flex items-center gap-9">
+          <Link href="/projects" className="font-serif text-[1.625rem]">
+            Maison
+          </Link>
+          <HeaderNav />
+        </div>
         <AccountMenu />
       </div>
     </header>
