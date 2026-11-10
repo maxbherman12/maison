@@ -13,6 +13,7 @@ import {
 } from '@/lib/billing';
 import { useProject } from '@/lib/query/projects';
 import { useGenerateInvoice } from '@/lib/query/invoices';
+import { BackLink } from '@/components/layout/BackLink';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { SegmentedTabs } from '@/components/ui/segmented-tabs';
@@ -138,7 +139,17 @@ export function InvoiceWorkspace({
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-[1380px] flex-1 flex-col">
-      <div className="shrink-0 lg:hidden">
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <BackLink href={`/projects/${project.id}`} label={project.project} />
+        <Link
+          href={`/projects/${project.id}/invoices`}
+          className="shrink-0 text-sm text-primary transition-colors hover:underline"
+        >
+          History
+        </Link>
+      </div>
+
+      <div className="mt-3 shrink-0 lg:hidden">
         <SegmentedTabs
           ariaLabel="Invoice workspace"
           idPrefix="invoice"

@@ -115,13 +115,15 @@ No test, lint, or format scripts exist.
 - `/projects/[id]/invoices` — invoice ledger with a compact summary strip and an internally scrolling list
 - `/projects/[id]/invoices/new` — invoice composer; preview and item panels scroll independently, with the total/generate footer outside both
 - `/projects/[id]/invoices/[invoiceId]` — invoice detail; the document scrolls inside its own panel
+- `/settings` — placeholder settings page (account heading + coming-soon copy)
+- `/admin` — admin-only account list with impersonation
 
 ## Layout and scrolling
 
-- `AppShell` / `ProjectShell` render the app's single `<main>`. By default `<main>` scrolls.
-- Pass `fill` to `AppShell` / `ProjectShell` for viewport-first routes. The shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
+- `AppShell` renders the app's single `<main>` and owns the menu bar (`AppHeader`), which is identical on every page: the Maison wordmark (→ `/projects`) on the left and the account menu on the right. Routes never pass anything into the header.
+- Pages own their own navigation and identity instead: back links (`components/layout/BackLink.tsx`), headings, and context live in page content, not the header.
+- By default `<main>` scrolls. Pass `fill` to `AppShell` for viewport-first routes; the shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
 - `fill` is used by project detail, invoice index, composer, and invoice detail. Forms, the board, and the project list keep the default page scroll.
-- Do not repeat the app-header title as a page `<h1>` on viewport-first routes.
 - Use `overflow-y-auto overscroll-contain` only on the panel that genuinely needs to scroll. Do not add full-height page wrappers; the shell owns the viewport.
 
 ## Billing model

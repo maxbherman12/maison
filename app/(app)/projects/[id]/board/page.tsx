@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getPageServices } from '@/lib/services/container';
 import type { Project } from '@/lib/types';
 import { FurnitureBoard } from '@/components/features/furniture/FurnitureBoard';
-import { ProjectShell } from '@/components/layout/ProjectShell';
+import { AppShell } from '@/components/layout/AppShell';
 
 export default async function FurnitureBoardPage({
   params,
@@ -19,8 +19,8 @@ export default async function FurnitureBoardPage({
   }
 
   return (
-    <ProjectShell project={project}>
+    <AppShell>
       <FurnitureBoard project={project} />
-    </ProjectShell>
+    </AppShell>
   );
 }

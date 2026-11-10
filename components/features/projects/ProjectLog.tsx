@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timer, Package, CreditCard, Check, ArrowRight } from 'lucide-react';
 import type { Project, AddFurnitureInput } from '@/lib/types';
+import { BackLink } from '@/components/layout/BackLink';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { useLogHours, useAddFurniture } from '@/lib/query/projects';
@@ -86,7 +87,9 @@ export function ProjectLog({ project }: ProjectLogProps) {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <ol className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <BackLink href={`/projects/${project.id}`} label={project.project} />
+
+      <ol className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
         {STEPS.map((stepItem) => {
           const isDone = stepItem.number < step;
           const isCurrent = stepItem.number === step;

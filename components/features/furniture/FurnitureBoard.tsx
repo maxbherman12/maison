@@ -30,6 +30,7 @@ import {
 import type { FurnitureItem, FurnitureStatus, Project } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { BackLink } from '@/components/layout/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Toast, useNotice } from '@/components/ui/toast';
@@ -223,7 +224,9 @@ export function FurnitureBoard({ project }: FurnitureBoardProps) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <BackLink href={`/projects/${project.id}`} label={project.project} />
+
+      <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Furniture board

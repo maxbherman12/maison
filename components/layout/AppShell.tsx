@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { AppHeader } from './AppHeader';
 
 interface AppShellProps {
-  header: ReactNode;
   children: ReactNode;
   contentClassName?: string;
   /**
@@ -14,22 +14,19 @@ interface AppShellProps {
 }
 
 /**
- * The single page frame for the app.
- *
- * The header lives outside the scroll container, so it stays put without
- * `position: fixed`. By default everything below it scrolls inside one
- * `<main>`; fill routes instead give that height to their own panels. Routes
- * must not add full-height page wrappers.
+ * The single page frame for the app. It renders the uniform menu bar itself,
+ * so no route can add controls to the header. By default everything below it
+ * scrolls inside one `<main>`; fill routes instead give that height to their
+ * own panels. Routes must not add full-height page wrappers.
  */
 export function AppShell({
-  header,
   children,
   contentClassName,
   fill = false,
 }: AppShellProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
-      {header}
+      <AppHeader />
       <main
         data-app-scroll
         className={cn(

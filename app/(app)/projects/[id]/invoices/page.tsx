@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getPageServices } from '@/lib/services/container';
 import type { Invoice, Project } from '@/lib/types';
-import { ProjectShell } from '@/components/layout/ProjectShell';
+import { AppShell } from '@/components/layout/AppShell';
 import { InvoiceIndex } from '@/components/features/invoices/InvoiceIndex';
 
 export default async function InvoicesPage({
@@ -21,15 +21,11 @@ export default async function InvoicesPage({
   const invoices: Invoice[] = await invoiceService.listInvoices(project.id);
 
   return (
-    <ProjectShell
-      project={project}
-      title="Invoices"
-      backHref={`/projects/${project.id}`}
-      backLabel="Project"
+    <AppShell
       fill
       contentClassName="pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] sm:pt-6 sm:pb-6"
     >
       <InvoiceIndex project={project} invoices={invoices} />
-    </ProjectShell>
+    </AppShell>
   );
 }

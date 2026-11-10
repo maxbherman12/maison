@@ -1,6 +1,26 @@
 # App header and account menu
 
-**Status:** Draft for review
+**Status:** Draft for review (revised 2026-11-09 after review feedback)
+
+## Revision (2026-11-09): fully uniform header
+
+Review feedback on the first pass: page-specific back links, titles, context,
+and the composer's History action still appeared in the header, so the bar kept
+changing shape per route. Revised design:
+
+- `AppHeader` takes no props: wordmark + account menu, identical everywhere.
+- `AppShell` renders the header itself (no `header` prop), so no route *can*
+  add header controls — uniformity is structural, not conventional.
+- `ProjectShell` deleted; project routes use `AppShell` directly.
+- Navigation and page identity moved into content:
+  - `components/layout/BackLink.tsx` — shared back link rendered at the top of
+    each sub-route (log, board, invoices index, composer, invoice detail).
+  - Project detail shows its name as a serif heading beside the client eyebrow.
+  - Admin and settings render their own headings.
+  - The composer's History link moved next to its back link.
+- Consequence: since the header no longer carries titles, viewport-first routes
+  own their headings (the old "don't repeat the app-header title" rule is moot).
+- AGENTS.md layout/pages notes updated to match.
 
 ## Problem
 

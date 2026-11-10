@@ -181,10 +181,15 @@ export function ProjectSummary({ project, invoices }: ProjectSummaryProps) {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-      <div className="flex items-center justify-between gap-3 pb-3">
-        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          {project.client}
-        </p>
+      <div className="flex items-start justify-between gap-3 pb-3">
+        <div className="min-w-0">
+          <p className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {project.client}
+          </p>
+          <h1 className="mt-1 truncate font-serif text-2xl leading-tight sm:text-3xl">
+            {project.project}
+          </h1>
+        </div>
         {!editing && (
           <Button
             type="button"

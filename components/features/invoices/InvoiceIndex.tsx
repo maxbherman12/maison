@@ -8,6 +8,7 @@ import { buildBillableRows, buildPendingTotal } from '@/lib/billing';
 import { useProject } from '@/lib/query/projects';
 import { useInvoices } from '@/lib/query/invoices';
 import { buttonVariants } from '@/components/ui/button';
+import { BackLink } from '@/components/layout/BackLink';
 import { cn } from '@/lib/utils';
 import { InvoicesGrid } from './InvoicesGrid';
 
@@ -33,9 +34,7 @@ export function InvoiceIndex({ project, invoices }: InvoiceIndexProps) {
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
       <div className="flex items-center justify-between gap-3 pb-3">
-        <p className="min-w-0 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          {project.client} · {project.project}
-        </p>
+        <BackLink href={`/projects/${project.id}`} label={project.project} />
         {canInvoice ? (
           <Link
             href={newInvoiceHref}

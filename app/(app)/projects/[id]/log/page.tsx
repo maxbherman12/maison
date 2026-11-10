@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getPageServices } from '@/lib/services/container';
 import type { Project } from '@/lib/types';
 import { ProjectLogClient } from '@/components/features/projects/ProjectLogClient';
-import { ProjectShell } from '@/components/layout/ProjectShell';
+import { AppShell } from '@/components/layout/AppShell';
 
 export default async function ProjectLogPage({
   params,
@@ -19,8 +19,8 @@ export default async function ProjectLogPage({
   }
 
   return (
-    <ProjectShell project={project}>
+    <AppShell>
       <ProjectLogClient project={project} />
-    </ProjectShell>
+    </AppShell>
   );
 }

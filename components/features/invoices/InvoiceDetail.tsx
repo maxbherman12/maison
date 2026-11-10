@@ -13,6 +13,7 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
+import { BackLink } from '@/components/layout/BackLink';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Download, FileText, Send } from 'lucide-react';
@@ -49,6 +50,16 @@ export function InvoiceDetail({ project, invoice }: InvoiceDetailProps) {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-3 pb-3">
+        <BackLink
+          href={`/projects/${project.id}/invoices`}
+          label="Invoices"
+        />
+        <p className="shrink-0 truncate text-sm font-medium">
+          {liveInvoice.number}
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
         <div className="flex min-w-0 items-center gap-2">
           <InvoiceStatusBadge status={status} />
