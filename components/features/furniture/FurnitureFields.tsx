@@ -36,8 +36,7 @@ export function FurnitureStatusField() {
   );
 }
 
-/** The furniture form body, shared by logging and editing a piece. */
-export function FurnitureFields() {
+export function FurniturePieceFields() {
   const {
     register,
     formState: { errors },
@@ -47,44 +46,77 @@ export function FurnitureFields() {
     <>
       <TextField label="Piece" {...register('name')} error={errors.name} />
       <TextField label="Vendor" {...register('vendor')} error={errors.vendor} />
-      <div className="grid grid-cols-2 gap-4">
-        <TextField
-          label="Trade price"
-          type="number"
-          step="0.01"
-          inputMode="decimal"
-          prefix="$"
-          {...register('trade')}
-          error={errors.trade}
-        />
-        <TextField
-          label="Retail price"
-          type="number"
-          step="0.01"
-          inputMode="decimal"
-          prefix="$"
-          {...register('retail')}
-          error={errors.retail}
-        />
-      </div>
+    </>
+  );
+}
+
+export function FurniturePriceFields() {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<FurnitureFormValues>();
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <TextField
+        label="Trade price"
+        type="number"
+        step="0.01"
+        inputMode="decimal"
+        prefix="$"
+        {...register('trade')}
+        error={errors.trade}
+      />
+      <TextField
+        label="Retail price"
+        type="number"
+        step="0.01"
+        inputMode="decimal"
+        prefix="$"
+        {...register('retail')}
+        error={errors.retail}
+      />
+    </div>
+  );
+}
+
+export function FurnitureExtraFields() {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<FurnitureFormValues>();
+
+  return (
+    <>
+      <TextField label="Link" {...register('link')} error={errors.link} />
+      <TextField
+        label="Tags, separated by commas"
+        {...register('tags')}
+        error={errors.tags}
+      />
+      <TextAreaField
+        label="Notes"
+        rows={2}
+        {...register('notes')}
+        error={errors.notes}
+      />
+    </>
+  );
+}
+
+/** Every field on one screen, for editing a piece. */
+export function FurnitureFields() {
+  return (
+    <>
+      <FurniturePieceFields />
+      <FurniturePriceFields />
       <FurnitureStatusField />
       <details>
         <summary className="flex min-h-8 cursor-pointer items-center text-label underline underline-offset-3">
           Link, tags and notes
         </summary>
         <div className="grid gap-2.5 pt-1">
-          <TextField label="Link" {...register('link')} error={errors.link} />
-          <TextField
-            label="Tags, separated by commas"
-            {...register('tags')}
-            error={errors.tags}
-          />
-          <TextAreaField
-            label="Notes"
-            rows={2}
-            {...register('notes')}
-            error={errors.notes}
-          />
+          <FurnitureExtraFields />
         </div>
       </details>
     </>

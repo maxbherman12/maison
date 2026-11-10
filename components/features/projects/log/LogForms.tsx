@@ -24,7 +24,12 @@ import {
   ChargeAmountField,
   ChargeTitleDateFields,
 } from '@/components/features/billing/ChargeFields';
-import { FurnitureFields } from '@/components/features/furniture/FurnitureFields';
+import {
+  FurnitureExtraFields,
+  FurniturePieceFields,
+  FurniturePriceFields,
+  FurnitureStatusField,
+} from '@/components/features/furniture/FurnitureFields';
 import type { SavedEntry } from './ProjectLog';
 
 interface LogFormProps {
@@ -33,12 +38,13 @@ interface LogFormProps {
   onSaved: (entry: SavedEntry) => void;
 }
 
-function LogFormFrame({
+export function LogFormFrame({
   question,
   header,
   onSubmit,
   pending,
   error,
+  submitLabel = 'Save',
   children,
 }: {
   question: string;
@@ -46,6 +52,7 @@ function LogFormFrame({
   onSubmit: FormEventHandler<HTMLFormElement>;
   pending: boolean;
   error: string | null;
+  submitLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -60,14 +67,48 @@ function LogFormFrame({
       </FlowBody>
       <FlowFooter>
         <Button type="submit" size="xl" disabled={pending}>
-          {pending ? 'Saving…' : 'Save'}
+          {pending ? 'Saving…' : submitLabel}
         </Button>
       </FlowFooter>
     </form>
   );
 }
 
-export function LogFurnitureForm({ project, header, onSaved }: LogFormProps) {
+const FURNITURE_STAGES = {
+  piece: {
+    question: 'What did you buy?',
+    fields: ['name', 'vendor', 'trade', 'retail'],
+    body: (
+      <>
+        <FurniturePieceFields />
+        <FurniturePriceFields />
+      </>
+    ),
+  },
+  details: {
+    question: 'Any last details?',
+    fields: ['status', 'link', 'tags', 'notes'],
+    body: (
+      <>
+        <FurnitureStatusField />
+        <FurnitureExtraFields />
+      </>
+    ),
+  },
+} satisfies Record<
+  string,
+  { question: string; fields: (keyof FurnitureFormValues)[]; body: ReactNode }
+>;
+
+export type FurnitureStage = keyof typeof FURNITURE_STAGES;
+
+export function LogFurnitureForm({
+  project,
+  header,
+  onSaved,
+  stage,
+  onNext,
+}: LogFormProps & { stage: FurnitureStage; onNext: () => void }) {
   const { run, pending, error } = useAction();
   const form = useForm<FurnitureFormValues>({
     resolver: zodResolver(FurnitureSchema, undefined, { raw: true }),
@@ -82,28 +123,39 @@ export function LogFurnitureForm({ project, header, onSaved }: LogFormProps) {
       status: 'Pending',
     },
   });
+  const { question, fields, body } = FURNITURE_STAGES[stage];
+  const isLastStage = stage === 'details';
+
+  const save = form.handleSubmit((values) =>
+    run(
+      () => addFurniture(project.id, values),
+      ({ id }) =>
+        onSaved({
+          id,
+          kind: 'furniture',
+          amountCents: dollarsToCents(Number(values.trade)),
+          summary: `${values.name}, at trade price.`,
+        })
+    )
+  );
+
+  const submit: FormEventHandler<HTMLFormElement> = async (event) => {
+    if (isLastStage) return save(event);
+    event.preventDefault();
+    if (await form.trigger(fields, { shouldFocus: true })) onNext();
+  };
 
   return (
     <FormProvider {...form}>
       <LogFormFrame
-        question="What did you buy?"
+        question={question}
         header={header}
-        onSubmit={form.handleSubmit((values) =>
-          run(
-            () => addFurniture(project.id, values),
-            ({ id }) =>
-              onSaved({
-                id,
-                kind: 'furniture',
-                amountCents: dollarsToCents(Number(values.trade)),
-                summary: `${values.name}, at trade price.`,
-              })
-          )
-        )}
+        onSubmit={submit}
         pending={pending}
         error={error}
+        submitLabel={isLastStage ? 'Save' : 'Next'}
       >
-        <FurnitureFields />
+        {body}
       </LogFormFrame>
     </FormProvider>
   );

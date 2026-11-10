@@ -13,15 +13,15 @@ import type { ProjectDetail } from '@/lib/domain/types';
 import { Confirmation } from '@/components/layout/Confirmation';
 import { FlowBack, FlowBody } from '@/components/layout/FlowPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { LogChargeForm, LogFurnitureForm } from './LogForms';
+import { LogChargeForm, LogFurnitureForm, type FurnitureStage } from './LogForms';
 import { HoursStep, TaskStep } from './LogHoursForm';
 
 type LogType = 'hours' | 'furniture' | 'charge';
-type Screen = 'type' | 'hours' | 'task' | 'furniture' | 'charge';
+type Screen = 'type' | 'hours' | 'task' | FurnitureStage | 'charge';
 
 const PATHS: Record<LogType, Screen[]> = {
   hours: ['type', 'hours', 'task'],
-  furniture: ['type', 'furniture'],
+  furniture: ['type', 'piece', 'details'],
   charge: ['type', 'charge'],
 };
 
@@ -62,7 +62,7 @@ export function ProjectLog({
         saved={saved}
         onLogAnother={() => {
           setSaved(null);
-          setStep(0);
+          setStep(firstStep);
         }}
       />
     );
@@ -138,8 +138,17 @@ export function ProjectLog({
       );
     case 'task':
       return <TaskStep {...shared} hours={hours} date={date} />;
-    case 'furniture':
-      return <LogFurnitureForm {...shared} />;
+    case 'piece':
+    case 'details':
+      // One key across the stages, so answers survive moving between them.
+      return (
+        <LogFurnitureForm
+          key="furniture"
+          {...shared}
+          stage={screen}
+          onNext={() => setStep(step + 1)}
+        />
+      );
     case 'charge':
       return <LogChargeForm {...shared} />;
   }

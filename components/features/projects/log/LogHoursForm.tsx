@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { logHours } from '@/lib/actions/charges';
 import { useAction } from '@/lib/actions/use-action';
 import { todayLocal } from '@/lib/domain/dates';
 import { chargeForHours, formatMoneyWhole } from '@/lib/domain/money';
 import type { ProjectDetail } from '@/lib/domain/types';
 import { FlowBody, FlowFooter } from '@/components/layout/FlowPanel';
-import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/form-field';
+import { LogFormFrame } from './LogForms';
 import type { SavedEntry } from './ProjectLog';
 
-const TASKS = ['Site visit', 'Sourcing', 'Client meeting', 'Drawings', 'Install day'];
 const HOURS_STEP = 0.5;
 const MAX_HOURS = 12;
 
@@ -116,7 +115,9 @@ export function TaskStep({
   const { run, pending, error } = useAction();
   const [note, setNote] = useState('');
 
-  const save = (title: string) =>
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    const title = note.trim();
     run(
       () => logHours(project.id, { title, date, hours: String(hours) }),
       ({ id }) =>
@@ -124,48 +125,25 @@ export function TaskStep({
           id,
           kind: 'charge',
           amountCents: chargeForHours(hours, project.hourlyRateCents),
-          summary: `${hours} ${hoursWord(hours)} of ${title.toLowerCase()}.`,
+          summary: `${title}, ${hours} ${hoursWord(hours)}.`,
         })
     );
+  };
 
   return (
-    <>
-      <FlowBody>
-        {header}
-        <h2 className="pt-3 pb-2.5 font-serif text-heading font-normal">
-          What did you do?
-        </h2>
-        {TASKS.map((task) => (
-          <button
-            key={task}
-            type="button"
-            disabled={pending}
-            onClick={() => save(task)}
-            className="py-2.5 text-left font-serif text-name"
-          >
-            {task}
-          </button>
-        ))}
-        <div className="pt-1">
-          <TextField
-            label="Something else"
-            placeholder="Type what you did"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
-        {error && <Alert className="mt-3">{error}</Alert>}
-      </FlowBody>
-      <FlowFooter>
-        <Button
-          type="button"
-          size="xl"
-          disabled={pending || !note.trim()}
-          onClick={() => save(note)}
-        >
-          {pending ? 'Saving…' : 'Save'}
-        </Button>
-      </FlowFooter>
-    </>
+    <LogFormFrame
+      question="What did you do?"
+      header={header}
+      onSubmit={save}
+      pending={pending}
+      error={error}
+    >
+      <TextField
+        label="Description"
+        required
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+      />
+    </LogFormFrame>
   );
 }
