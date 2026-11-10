@@ -1,32 +1,57 @@
 'use client';
 
+import { useState } from 'react';
 import { CheckCircle2, ExternalLink, Pencil, Trash2 } from 'lucide-react';
-import type { FurnitureItem, FurnitureStatus } from '@/lib/types';
-import { formatMoney } from '@/lib/types';
+import { deleteFurniture } from '@/lib/actions/furniture';
+import { useAction } from '@/lib/actions/use-action';
+import { FURNITURE_STATUSES, type FurnitureStatus } from '@/lib/domain/furniture';
+import { formatMoney } from '@/lib/domain/money';
+import type { FurnitureItem } from '@/lib/domain/types';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Sheet } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
-import {
-  FURNITURE_STATUS_META,
-  FURNITURE_STATUS_ORDER,
-} from './furniture-status';
+import { FURNITURE_STATUS_META } from './furniture-status';
 
-interface FurnitureSheetProps {
+interface FurnitureDetailSheetProps {
   item: FurnitureItem;
   onClose: () => void;
   onMove: (status: FurnitureStatus) => void;
-  onDelete: () => void;
+  onDeleted: () => void;
   onEdit?: () => void;
 }
 
-export function FurnitureSheet({
+/**
+ * A piece's details, status moves, and delete confirmation. Once a piece has
+ * been invoiced only its status can change, so editing and deleting are hidden.
+ */
+export function FurnitureDetailSheet({
   item,
   onClose,
   onMove,
-  onDelete,
+  onDeleted,
   onEdit,
-}: FurnitureSheetProps) {
+}: FurnitureDetailSheetProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { run, pending, error } = useAction();
+  const isPendingBilling = item.invoiceId === null;
+
+  if (confirmingDelete) {
+    return (
+      <ConfirmDialog
+        title="Delete furniture entry?"
+        description={`This will remove ${item.name} from the project. This cannot be undone.`}
+        confirmLabel="Delete entry"
+        tone="destructive"
+        pending={pending}
+        error={error}
+        onClose={() => setConfirmingDelete(false)}
+        onConfirm={() => run(() => deleteFurniture(item.id), onDeleted)}
+      />
+    );
+  }
+
   return (
     <Sheet
       eyebrow="Furniture"
@@ -39,7 +64,7 @@ export function FurnitureSheet({
           Move to
         </p>
         <div className="grid gap-2">
-          {FURNITURE_STATUS_ORDER.map((status) => {
+          {FURNITURE_STATUSES.map((status) => {
             const meta = FURNITURE_STATUS_META[status];
             const Icon = meta.icon;
             const isCurrent = item.status === status;
@@ -80,8 +105,8 @@ export function FurnitureSheet({
 
       <div className="mt-6 grid gap-4 border-t border-border pt-5">
         <div className="grid grid-cols-2 gap-4">
-          <Detail label="Retail" value={formatMoney(item.retail)} />
-          <Detail label="Trade" value={formatMoney(item.trade)} />
+          <Detail label="Retail" value={formatMoney(item.retailCents)} />
+          <Detail label="Trade" value={formatMoney(item.tradeCents)} />
         </div>
         <Detail label="Tags" value={item.tags.join(', ') || 'No tags'} />
         <Detail label="Notes" value={item.notes || 'No notes'} />
@@ -97,25 +122,32 @@ export function FurnitureSheet({
         )}
       </div>
 
-      {onEdit && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onEdit}
-          className="mt-6 w-full text-primary"
-        >
-          <Pencil className="size-4" /> Edit details
-        </Button>
+      {isPendingBilling ? (
+        <div className="mt-6 grid gap-2">
+          {onEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onEdit}
+              className="w-full text-primary"
+            >
+              <Pencil className="size-4" /> Edit details
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setConfirmingDelete(true)}
+            className="w-full"
+          >
+            <Trash2 className="size-4" /> Delete furniture entry
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-6 text-xs text-muted-foreground">
+          This piece has been invoiced, so only its status can change.
+        </p>
       )}
-
-      <Button
-        type="button"
-        variant="destructive"
-        onClick={onDelete}
-        className={cn('w-full', onEdit ? 'mt-2' : 'mt-6')}
-      >
-        <Trash2 className="size-4" /> Delete furniture entry
-      </Button>
     </Sheet>
   );
 }

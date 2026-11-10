@@ -1,24 +1,41 @@
-import type { InvoiceLineItem, Project } from '@/lib/types';
-import { formatMoney } from '@/lib/types';
-import { formatDate } from '@/lib/format-date';
-import { Badge } from '@/components/ui/badge';
+import type { ReactNode } from 'react';
+import { BILLABLE_KIND_LABELS, type BillableKind } from '@/lib/domain/billing';
+import { formatMoney } from '@/lib/domain/money';
 
-interface InvoicePreviewProps {
-  project: Project;
-  lineItems: InvoiceLineItem[];
-  issueDate: string;
+interface InvoiceDocumentProps {
+  label: string;
+  /** Top-right of the letterhead: number or draft status, and date. */
+  meta: ReactNode;
+  billTo: { client: string; project: string; address: string };
+  /** Right-hand block next to the bill-to details. */
+  summary: ReactNode;
+  lineItems: readonly {
+    id: string;
+    kind: BillableKind;
+    title: string;
+    amountCents: number;
+  }[];
+  emptyState?: ReactNode;
+  footnote: string;
+  totalLabel: string;
+  totalCents: number;
 }
 
-export function InvoicePreview({
-  project,
+/** The on-screen invoice, shared by the draft preview and generated invoices. */
+export function InvoiceDocument({
+  label,
+  meta,
+  billTo,
+  summary,
   lineItems,
-  issueDate,
-}: InvoicePreviewProps) {
-  const total = lineItems.reduce((sum, item) => sum + item.amount, 0);
-
+  emptyState,
+  footnote,
+  totalLabel,
+  totalCents,
+}: InvoiceDocumentProps) {
   return (
     <article
-      aria-label="Draft invoice preview"
+      aria-label={label}
       className="rounded-3xl border border-border bg-card p-4 shadow-[0_18px_50px_-35px_rgba(41,41,35,0.45)] sm:p-6 lg:p-8"
     >
       <header className="flex items-start justify-between gap-4 border-b border-border/70 pb-6">
@@ -28,13 +45,7 @@ export function InvoicePreview({
             Interior design
           </p>
         </div>
-        <div className="text-right">
-          <Badge tone="brand">Draft</Badge>
-          <p className="mt-2 text-sm font-medium">New invoice</p>
-          <p className="text-xs text-muted-foreground">
-            Issued {formatDate(issueDate)}
-          </p>
-        </div>
+        <div className="text-right">{meta}</div>
       </header>
 
       <div className="grid gap-6 border-b border-border/70 py-6 sm:grid-cols-2">
@@ -42,50 +53,30 @@ export function InvoicePreview({
           <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Bill to
           </p>
-          <p className="mt-2 text-lg font-medium">{project.client}</p>
-          <p className="text-sm text-muted-foreground">{project.project}</p>
-          {project.address && (
+          <p className="mt-2 text-lg font-medium">{billTo.client}</p>
+          <p className="text-sm text-muted-foreground">{billTo.project}</p>
+          {billTo.address && (
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-              {project.address}
+              {billTo.address}
             </p>
           )}
         </div>
-        <div className="sm:text-right">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Payment terms
-          </p>
-          <p className="mt-2 text-sm text-foreground">
-            Due date is set when the invoice is marked sent.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            The final number is assigned on generation.
-          </p>
-        </div>
+        <div className="sm:text-right">{summary}</div>
       </div>
 
       <div className="pt-6">
         {lineItems.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-secondary px-5 py-10 text-center">
-            <p className="font-serif text-xl">No items selected</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose at least one pending item to preview an invoice.
-            </p>
-          </div>
+          emptyState
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <caption className="sr-only">
-                Draft invoice line items
-              </caption>
+              <caption className="sr-only">{label} line items</caption>
               <thead>
                 <tr className="border-b border-border/70 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   <th scope="col" className="pb-3 pr-4 font-medium">
                     Description
                   </th>
-                  <th
-                    scope="col"
-                    className="pb-3 pl-4 text-right font-medium"
-                  >
+                  <th scope="col" className="pb-3 pl-4 text-right font-medium">
                     Amount
                   </th>
                 </tr>
@@ -93,7 +84,7 @@ export function InvoicePreview({
               <tbody>
                 {lineItems.map((item) => (
                   <tr
-                    key={`${item.source}:${item.id}`}
+                    key={item.id}
                     className="border-b border-border/40 last:border-0"
                   >
                     <td className="py-3 pr-4 align-top">
@@ -101,11 +92,11 @@ export function InvoicePreview({
                         {item.title}
                       </span>
                       <span className="mt-0.5 block text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                        {item.source === 'hours' ? 'Hours' : 'Furniture'}
+                        {BILLABLE_KIND_LABELS[item.kind]}
                       </span>
                     </td>
                     <td className="py-3 pl-4 text-right align-top font-medium tabular-nums">
-                      {formatMoney(item.amount)}
+                      {formatMoney(item.amountCents)}
                     </td>
                   </tr>
                 ))}
@@ -117,15 +108,14 @@ export function InvoicePreview({
 
       <div className="mt-6 flex items-end justify-between gap-4 border-t border-border/70 pt-5">
         <p className="max-w-[34ch] text-xs leading-relaxed text-muted-foreground">
-          Amounts are recalculated from the selected source items when this
-          invoice is generated.
+          {footnote}
         </p>
         <div className="text-right">
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Total due
+            {totalLabel}
           </p>
           <p className="mt-1 font-serif text-3xl leading-none">
-            {formatMoney(total)}
+            {formatMoney(totalCents)}
           </p>
         </div>
       </div>

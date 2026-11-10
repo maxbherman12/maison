@@ -5,15 +5,8 @@ import {
   Truck,
   type LucideIcon,
 } from 'lucide-react';
-import type { FurnitureStatus } from '@/lib/types';
+import type { FurnitureStatus } from '@/lib/domain/furniture';
 import type { BadgeTone } from '@/components/ui/badge';
-
-export const FURNITURE_STATUS_ORDER = [
-  'Pending',
-  'Ordered',
-  'In transit',
-  'Delivered',
-] as const satisfies readonly FurnitureStatus[];
 
 interface StatusMeta {
   icon: LucideIcon;

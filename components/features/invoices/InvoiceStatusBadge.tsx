@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from '@/lib/types';
+import type { InvoiceStatus } from '@/lib/domain/invoices';
 import { Badge, type BadgeTone } from '@/components/ui/badge';
 
 const STATUS_TONES: Record<InvoiceStatus, BadgeTone> = {
@@ -8,18 +8,6 @@ const STATUS_TONES: Record<InvoiceStatus, BadgeTone> = {
   Overdue: 'danger',
 };
 
-interface InvoiceStatusBadgeProps {
-  status: InvoiceStatus;
-  className?: string;
-}
-
-export function InvoiceStatusBadge({
-  status,
-  className,
-}: InvoiceStatusBadgeProps) {
-  return (
-    <Badge tone={STATUS_TONES[status]} className={className}>
-      {status}
-    </Badge>
-  );
+export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
+  return <Badge tone={STATUS_TONES[status]}>{status}</Badge>;
 }
