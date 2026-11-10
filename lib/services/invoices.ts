@@ -1,244 +1,274 @@
-import { basename } from 'node:path';
+import 'server-only';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  sql,
+} from 'drizzle-orm';
+import { db } from '@/lib/db/client';
+import {
+  charges,
+  furnitureItems,
+  invoiceLineItems,
+  invoices,
+  projects,
+} from '@/lib/db/schema';
+import { buildBillableItems, totalCents } from '@/lib/domain/billing';
+import { addDays } from '@/lib/domain/dates';
+import { isUuid } from '@/lib/domain/ids';
 import type {
-  Invoice,
-  InvoiceLineItem,
-  GenerateInvoiceInput,
-} from '../types';
-import type {
-  InvoiceRepository,
-  ProjectRepository,
-} from '../repository/memory';
-import type { BlobStore } from '../storage/blob-store';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { billableRowKey, buildBillableRows } from '../billing';
-import { getInvoiceDueDays } from '../invoices/config';
-import { AppError } from '../errors';
+  InvoiceDetail,
+  InvoiceListItem,
+} from '@/lib/domain/types';
+import { AppError } from '@/lib/errors';
+import { renderInvoicePdf } from '@/lib/invoices/pdf';
+import type { BlobContent, BlobStore } from '@/lib/storage/blob-store';
+import type { GenerateInvoiceInput } from '@/lib/validators/invoices';
 
-interface InvoicePdfInput {
-  client: string;
-  project: string;
-  total: number;
-  items: InvoiceLineItem[];
+const FIRST_INVOICE_NUMBER = 1042;
+const DEFAULT_DUE_DAYS = 14;
+
+function dueDays(): number {
+  const days = Number.parseInt(process.env.INVOICE_DUE_DAYS ?? '', 10);
+  return Number.isFinite(days) && days >= 0 ? days : DEFAULT_DUE_DAYS;
 }
 
-interface InvoicePdfRenderer {
-  render(input: InvoicePdfInput): Promise<Buffer>;
-}
+// The storage key and owner never leave the server.
+const { pathname: _pathname, ownerId: _ownerId, ...publicColumns } =
+  getTableColumns(invoices);
 
-export class PdfInvoiceRenderer implements InvoicePdfRenderer {
-  async render(input: InvoicePdfInput): Promise<Buffer> {
-    const pdf = await PDFDocument.create();
-    const page = pdf.addPage([612, 792]);
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
-    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-    page.drawText('Maison', {
-      x: 54,
-      y: 720,
-      size: 22,
-      font: bold,
-      color: rgb(0.2, 0.23, 0.2),
-    });
-    page.drawText(`Invoice for ${input.project}`, {
-      x: 54,
-      y: 680,
-      size: 14,
-      font: bold,
-    });
-    page.drawText(`Bill to: ${input.client}`, {
-      x: 54,
-      y: 655,
-      size: 12,
-      font,
-    });
-
-    let y = 600;
-    for (const item of input.items) {
-      page.drawText(item.title.slice(0, 70), {
-        x: 54,
-        y,
-        size: 11,
-        font,
-      });
-      page.drawText(`$${item.amount.toFixed(2)}`, {
-        x: 470,
-        y,
-        size: 11,
-        font,
-      });
-      y -= 24;
-    }
-
-    page.drawText(`Total due: $${input.total.toFixed(2)}`, {
-      x: 360,
-      y: y - 12,
-      size: 15,
-      font: bold,
-    });
-
-    const bytes = await pdf.save();
-
-    return Buffer.from(bytes);
-  }
-}
+const lineItemCount = sql<number>`(
+  select count(*) from ${invoiceLineItems}
+  where ${invoiceLineItems.invoiceId} = ${invoices.id}
+)`.mapWith(Number);
 
 export class InvoiceService {
   constructor(
-    private readonly invoices: InvoiceRepository,
-    private readonly renderer: InvoicePdfRenderer,
-    private readonly projects: ProjectRepository,
+    private readonly ownerId: string,
     private readonly blobs: BlobStore
   ) {}
 
-  async listInvoices(projectId: string): Promise<Invoice[]> {
-    return this.invoices.list(projectId);
+  list(projectId: string): Promise<InvoiceListItem[]> {
+    return db
+      .select({ ...publicColumns, lineItemCount })
+      .from(invoices)
+      .where(
+        and(eq(invoices.projectId, projectId), eq(invoices.ownerId, this.ownerId))
+      )
+      .orderBy(desc(invoices.number));
   }
 
-  async getInvoice(id: string): Promise<Invoice | null> {
-    return this.invoices.get(id);
+  async get(id: string): Promise<InvoiceDetail | null> {
+    if (!isUuid(id)) return null;
+
+    const [invoice] = await db
+      .select(publicColumns)
+      .from(invoices)
+      .where(this.isOwned(id))
+      .limit(1);
+    if (!invoice) return null;
+
+    const lineItems = await db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, id))
+      .orderBy(asc(invoiceLineItems.position));
+
+    return { ...invoice, lineItems };
   }
 
-  async generateInvoice(input: GenerateInvoiceInput): Promise<Invoice> {
-    const project = await this.projects.get(input.projectId);
-    if (!project) {
-      throw new AppError('Project not found', 404);
-    }
-
-    if (!input.items.length) {
-      throw new AppError('Invoice must have at least one line item');
-    }
-
-    const seen = new Set<string>();
-    for (const item of input.items) {
-      const key = `${item.source}:${item.id}`;
-      if (seen.has(key)) {
-        throw new AppError('Invoice contains duplicate line items');
-      }
-      seen.add(key);
-    }
-
-    // Derive titles and amounts from the project rows. The client only ever
-    // sends source references, so it cannot rewrite what was billed.
-    const pending = new Map(
-      buildBillableRows(project).map((row) => [billableRowKey(row), row])
-    );
-
-    const rows = input.items.map((item) => {
-      const row = pending.get(`${item.source}:${item.id}`);
-      if (!row) {
-        throw new AppError(
-          'One or more items are no longer pending on this project'
-        );
-      }
-      return row;
-    });
-
-    const total = rows.reduce((sum, row) => sum + row.amount, 0);
-    if (total <= 0) {
-      throw new AppError('Total must be greater than zero');
-    }
-
-    const bytes = await this.renderer.render({
-      client: project.client,
-      project: project.project,
-      total,
-      items: rows.map((row) => ({
-        id: row.itemId,
-        source: row.source,
-        title: row.description,
-        amount: row.amount,
-      })),
-    });
-
-    const slug = project.project.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    const { pathname } = await this.blobs.put(
-      `invoices/${Date.now()}-${slug}.pdf`,
-      bytes,
-      { contentType: 'application/pdf' }
-    );
+  /**
+   * Bills the selected pending items in one transaction. The PDF is uploaded
+   * before commit, so an invoice exists exactly when its document does: an
+   * upload failure rolls everything back, and an item already invoiced by
+   * another tab fails the whole attempt.
+   */
+  async generate({ projectId, itemIds }: GenerateInvoiceInput): Promise<{ id: string }> {
+    const id = crypto.randomUUID();
+    const pathname = `invoices/${this.ownerId}/${id}.pdf`;
+    let uploaded = false;
 
     try {
-      return await this.invoices.createWithItems({
-        projectId: project.id,
-        total,
-        pathname,
-        items: rows.map((row) => ({
-          source: row.source,
-          sourceId: row.itemId,
-          title: row.description,
-          amount: row.amount,
-        })),
+      await db.transaction(async (tx) => {
+        // Serialises number allocation for this account.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`invoice_number:${this.ownerId}`}))`
+        );
+
+        const [project] = await tx
+          .select()
+          .from(projects)
+          .where(and(eq(projects.id, projectId), eq(projects.ownerId, this.ownerId)))
+          .limit(1);
+        if (!project) throw new AppError('Project not found', 404);
+
+        // Row locks hold these amounts steady until the invoice commits.
+        const pendingCharges = await tx
+          .select()
+          .from(charges)
+          .where(
+            and(
+              inArray(charges.id, itemIds),
+              eq(charges.projectId, projectId),
+              isNull(charges.invoiceId)
+            )
+          )
+          .for('update');
+        const pendingFurniture = await tx
+          .select()
+          .from(furnitureItems)
+          .where(
+            and(
+              inArray(furnitureItems.id, itemIds),
+              eq(furnitureItems.projectId, projectId),
+              isNull(furnitureItems.invoiceId)
+            )
+          )
+          .for('update');
+
+        const items = buildBillableItems({
+          charges: pendingCharges,
+          furniture: pendingFurniture,
+        });
+        if (items.length !== itemIds.length) {
+          throw new AppError(
+            'One or more items are no longer pending. Refresh and try again.',
+            409
+          );
+        }
+
+        const total = totalCents(items);
+        if (total <= 0) throw new AppError('Total must be greater than zero');
+
+        const [{ max }] = await tx
+          .select({ max: sql<number | null>`max(${invoices.number})` })
+          .from(invoices)
+          .where(eq(invoices.ownerId, this.ownerId));
+        const number = max === null ? FIRST_INVOICE_NUMBER : max + 1;
+        const createdAt = new Date();
+
+        await tx.insert(invoices).values({
+          id,
+          ownerId: this.ownerId,
+          projectId,
+          number,
+          clientName: project.client,
+          projectName: project.name,
+          address: project.address,
+          totalCents: total,
+          pathname,
+          createdAt,
+        });
+
+        await tx.insert(invoiceLineItems).values(
+          items.map((item, position) => ({
+            invoiceId: id,
+            kind: item.kind,
+            sourceId: item.id,
+            title: item.title,
+            amountCents: item.amountCents,
+            position,
+          }))
+        );
+
+        if (pendingCharges.length > 0) {
+          await tx
+            .update(charges)
+            .set({ invoiceId: id })
+            .where(inArray(charges.id, pendingCharges.map((row) => row.id)));
+        }
+        if (pendingFurniture.length > 0) {
+          await tx
+            .update(furnitureItems)
+            .set({ invoiceId: id })
+            .where(inArray(furnitureItems.id, pendingFurniture.map((row) => row.id)));
+        }
+
+        const pdf = await renderInvoicePdf({
+          number,
+          issuedAt: createdAt,
+          clientName: project.client,
+          projectName: project.name,
+          address: project.address,
+          totalCents: total,
+          lineItems: items,
+        });
+        await this.blobs.put(pathname, pdf, { contentType: 'application/pdf' });
+        uploaded = true;
       });
     } catch (error) {
-      // The PDF is already uploaded; remove it so a failed transaction does
-      // not leave an orphan blob behind.
-      try {
-        await this.blobs.delete(pathname);
-      } catch (cleanupError) {
-        console.error('[invoice] failed to delete orphaned blob', cleanupError);
-      }
+      if (uploaded) await this.discardBlob(pathname);
       throw error;
     }
+
+    return { id };
   }
 
-  async markSent(id: string): Promise<Invoice> {
-    const invoice = await this.invoices.get(id);
-    if (!invoice) {
-      throw new AppError('Invoice not found', 404);
-    }
-    if (invoice.paid) {
+  async markSent(id: string): Promise<void> {
+    const sentAt = new Date();
+    const updated = await db
+      .update(invoices)
+      .set({ sentAt, dueAt: addDays(sentAt, dueDays()) })
+      .where(and(this.isOwned(id), isNull(invoices.sentAt), isNull(invoices.paidAt)))
+      .returning({ id: invoices.id });
+    if (updated.length > 0) return;
+
+    // Nothing changed: already sent is a no-op, anything else is an error.
+    const [invoice] = await this.findState(id);
+    if (!invoice) throw new AppError('Invoice not found', 404);
+    if (invoice.paidAt) {
       throw new AppError('Paid invoices cannot be marked as sent', 409);
     }
-    if (invoice.sentAt) {
-      return invoice;
-    }
-
-    const sentAt = new Date();
-    const dueAt = addDays(sentAt, getInvoiceDueDays());
-    const updated = await this.invoices.markSent(id, sentAt, dueAt);
-
-    if (!updated) {
-      throw new AppError('Invoice not found', 404);
-    }
-    return updated;
   }
 
-  async markPaid(id: string): Promise<Invoice> {
-    const invoice = await this.invoices.get(id);
-    if (!invoice) {
-      throw new AppError('Invoice not found', 404);
-    }
-    if (invoice.paid) {
-      return invoice;
-    }
+  async markPaid(id: string): Promise<void> {
+    const paidAt = new Date();
+    const updated = await db
+      .update(invoices)
+      .set({ paidAt, sentAt: sql`coalesce(${invoices.sentAt}, ${paidAt})` })
+      .where(and(this.isOwned(id), isNull(invoices.paidAt)))
+      .returning({ id: invoices.id });
+    if (updated.length > 0) return;
 
-    const updated = await this.invoices.markPaid(id, new Date());
-    if (!updated) {
-      throw new AppError('Invoice not found', 404);
-    }
-    return updated;
+    const [invoice] = await this.findState(id);
+    if (!invoice) throw new AppError('Invoice not found', 404);
   }
 
-  async getInvoicePdf(id: string): Promise<{
-    stream: ReadableStream<Uint8Array>;
-    contentType: string;
-    filename: string;
-  } | null> {
-    const invoice = await this.invoices.get(id);
-    if (!invoice?.pathname) return null;
+  async getPdf(id: string): Promise<(BlobContent & { filename: string }) | null> {
+    if (!isUuid(id)) return null;
+
+    const [invoice] = await db
+      .select({ number: invoices.number, pathname: invoices.pathname })
+      .from(invoices)
+      .where(this.isOwned(id))
+      .limit(1);
+    if (!invoice) return null;
 
     const blob = await this.blobs.get(invoice.pathname);
-    if (!blob) return null;
-
-    return {
-      ...blob,
-      filename: basename(invoice.pathname),
-    };
+    return blob && { ...blob, filename: `invoice-${invoice.number}.pdf` };
   }
-}
 
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
+  private findState(id: string) {
+    return db
+      .select({ paidAt: invoices.paidAt })
+      .from(invoices)
+      .where(this.isOwned(id))
+      .limit(1);
+  }
+
+  private isOwned(id: string) {
+    return and(eq(invoices.id, id), eq(invoices.ownerId, this.ownerId));
+  }
+
+  private async discardBlob(pathname: string): Promise<void> {
+    try {
+      await this.blobs.delete(pathname);
+    } catch (error) {
+      console.error('[invoice] failed to delete orphaned blob', error);
+    }
+  }
 }

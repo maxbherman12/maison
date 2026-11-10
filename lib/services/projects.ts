@@ -1,118 +1,75 @@
-import type {
-  Project,
-  CreateProjectInput,
-  LogHoursInput,
-  AddFurnitureInput,
-  FurnitureStatus,
-  UpdateHourEntryInput,
-  UpdateFurnitureInput,
-} from '../types';
-import type { ProjectRepository } from '../repository/memory';
-import { AppError } from '../errors';
+import 'server-only';
+import { and, asc, eq, getTableColumns, sql } from 'drizzle-orm';
+import { db } from '@/lib/db/client';
+import { charges, furnitureItems, projects } from '@/lib/db/schema';
+import { isUuid } from '@/lib/domain/ids';
+import type { ProjectDetail, ProjectListItem } from '@/lib/domain/types';
+import { AppError } from '@/lib/errors';
+import type { ProjectInput } from '@/lib/validators/projects';
+
+/** Everything on a project that has not been billed yet. */
+const outstandingCents = sql<number>`(
+  coalesce((
+    select sum(${charges.amountCents}) from ${charges}
+    where ${charges.projectId} = ${projects.id} and ${charges.invoiceId} is null
+  ), 0) + coalesce((
+    select sum(${furnitureItems.tradeCents}) from ${furnitureItems}
+    where ${furnitureItems.projectId} = ${projects.id} and ${furnitureItems.invoiceId} is null
+  ), 0)
+)`.mapWith(Number);
 
 export class ProjectService {
-  constructor(private readonly projects: ProjectRepository) {}
+  constructor(private readonly ownerId: string) {}
 
-  async listProjects(): Promise<Project[]> {
-    return this.projects.list();
+  list(): Promise<ProjectListItem[]> {
+    return db
+      .select({ ...getTableColumns(projects), outstandingCents })
+      .from(projects)
+      .where(eq(projects.ownerId, this.ownerId))
+      .orderBy(asc(projects.createdAt));
   }
 
-  async getProject(id: string): Promise<Project | null> {
-    return this.projects.get(id);
+  async get(id: string): Promise<ProjectDetail | null> {
+    if (!isUuid(id)) return null;
+
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(this.isOwned(id))
+      .limit(1);
+    if (!project) return null;
+
+    const [projectCharges, furniture] = await Promise.all([
+      db.select().from(charges).where(eq(charges.projectId, id)),
+      db
+        .select()
+        .from(furnitureItems)
+        .where(eq(furnitureItems.projectId, id))
+        .orderBy(asc(furnitureItems.createdAt)),
+    ]);
+
+    return { ...project, charges: projectCharges, furniture };
   }
 
-  async createProject(input: CreateProjectInput): Promise<Project> {
-    if (!input.client.trim()) {
-      throw new Error('Client name is required');
-    }
-    if (!input.project.trim()) {
-      throw new Error('Project name is required');
-    }
-    if (input.hourlyRate <= 0) {
-      throw new Error('Hourly rate must be greater than zero');
-    }
-
-    return this.projects.create(input);
+  async create(input: ProjectInput): Promise<{ id: string }> {
+    const [project] = await db
+      .insert(projects)
+      .values({ ...input, ownerId: this.ownerId })
+      .returning({ id: projects.id });
+    return project;
   }
 
-  async updateProject(id: string, patch: Partial<Project>): Promise<Project | null> {
-    return this.projects.update(id, patch);
+  async update(id: string, input: ProjectInput): Promise<void> {
+    const updated = await db
+      .update(projects)
+      .set(input)
+      .where(this.isOwned(id))
+      .returning({ id: projects.id });
+
+    if (updated.length === 0) throw new AppError('Project not found', 404);
   }
 
-  async logHours(projectId: string, input: LogHoursInput): Promise<Project | null> {
-    if (!input.title.trim()) {
-      throw new Error('Log title is required');
-    }
-    const hasAmount = typeof input.amount === 'number' && input.amount > 0;
-    if (input.hours <= 0 && !hasAmount) {
-      throw new Error('Hours must be greater than zero');
-    }
-    return this.projects.logHours(projectId, input);
-  }
-
-  async addFurniture(
-    projectId: string,
-    input: AddFurnitureInput
-  ): Promise<Project | null> {
-    if (!input.name.trim()) {
-      throw new Error('Furniture name is required');
-    }
-    if (input.retail < 0 || input.trade < 0) {
-      throw new Error('Prices must be non-negative');
-    }
-    return this.projects.addFurniture(projectId, input);
-  }
-
-  async updateFurnitureStatus(
-    projectId: string,
-    furnitureId: string,
-    status: FurnitureStatus
-  ): Promise<Project | null> {
-    return this.projects.updateFurnitureStatus(projectId, furnitureId, status);
-  }
-
-  async updateFurniture(
-    projectId: string,
-    furnitureId: string,
-    patch: UpdateFurnitureInput
-  ): Promise<Project | null> {
-    if (patch.name !== undefined && !patch.name.trim()) {
-      throw new AppError('Furniture name is required');
-    }
-    if (
-      (patch.retail !== undefined && patch.retail < 0) ||
-      (patch.trade !== undefined && patch.trade < 0)
-    ) {
-      throw new AppError('Prices must be non-negative');
-    }
-    return this.projects.updateFurniture(projectId, furnitureId, patch);
-  }
-
-  async deleteFurniture(projectId: string, furnitureId: string): Promise<Project | null> {
-    return this.projects.deleteFurniture(projectId, furnitureId);
-  }
-
-  async updateHourEntry(
-    projectId: string,
-    hourId: string,
-    patch: UpdateHourEntryInput
-  ): Promise<Project | null> {
-    if (patch.title !== undefined && !patch.title.trim()) {
-      throw new AppError('Log title is required');
-    }
-    if (patch.hours !== undefined && patch.hours < 0) {
-      throw new AppError('Hours cannot be negative');
-    }
-    if (patch.amount !== undefined && patch.amount < 0) {
-      throw new AppError('Amount must be non-negative');
-    }
-    return this.projects.updateHourEntry(projectId, hourId, patch);
-  }
-
-  async deleteHourEntry(
-    projectId: string,
-    hourId: string
-  ): Promise<Project | null> {
-    return this.projects.deleteHourEntry(projectId, hourId);
+  private isOwned(id: string) {
+    return and(eq(projects.id, id), eq(projects.ownerId, this.ownerId));
   }
 }

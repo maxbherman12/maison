@@ -1,7 +1,8 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
-import { devImpersonationUserId, isUuid } from '@/lib/auth/dev-mode';
+import { auth } from '@/lib/auth/server';
+import { devImpersonationUserId } from '@/lib/auth/dev-mode';
+import { isUuid } from '@/lib/domain/ids';
 import { user as userTable } from '@/lib/db/auth-schema';
 import { db } from '@/lib/db/client';
 
