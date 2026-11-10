@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { UserMenu } from '@/components/features/auth/UserMenu';
+import { AccountMenu } from '@/components/features/auth/AccountMenu';
 
 interface AppHeaderProps {
-  /** Show the Maison wordmark instead of a back link. */
-  brand?: boolean;
   back?: {
     href: string;
     label: string;
@@ -13,54 +11,67 @@ interface AppHeaderProps {
   title?: string;
   /** Right-aligned context, e.g. "Client — Project". */
   context?: string;
+  /** A page-specific action, such as a link to invoice history. */
   actions?: ReactNode;
 }
 
-export function AppHeader({
-  brand,
-  back,
-  title,
-  context,
-  actions,
-}: AppHeaderProps) {
+/**
+ * The application's single menu bar. The Maison wordmark always links home;
+ * page-specific back links, titles, and context sit beside it rather than
+ * replacing it. The account menu is the only global action.
+ */
+export function AppHeader({ back, title, context, actions }: AppHeaderProps) {
+  const hasPageContext = Boolean(back || title);
+
   return (
     <header className="shrink-0 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1380px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
-          {back && (
+          <Link
+            href="/projects"
+            className="shrink-0 font-serif text-2xl tracking-tight transition-colors hover:text-primary"
+          >
+            Maison
+          </Link>
+
+          {hasPageContext ? (
+            <span
+              aria-hidden="true"
+              className="hidden h-5 w-px shrink-0 bg-border sm:block"
+            />
+          ) : null}
+
+          {back ? (
             <Link
               href={back.href}
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm text-primary transition-colors hover:underline"
+              aria-label={back.label}
+              className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="size-3.5" aria-hidden="true" />
-              <span className="truncate">{back.label}</span>
+              <ArrowLeft
+                className="size-3.5 transition-transform group-hover:-translate-x-0.5"
+                aria-hidden="true"
+              />
+              <span className={title ? 'hidden truncate sm:inline' : 'truncate'}>
+                {back.label}
+              </span>
             </Link>
-          )}
+          ) : null}
 
-          {brand && (
-            <Link
-              href="/projects"
-              className="font-serif text-2xl tracking-tight transition-colors hover:text-primary"
-            >
-              Maison
-            </Link>
-          )}
-
-          {title && (
-            <h1 className="truncate font-serif text-xl leading-tight sm:text-2xl">
+          {title ? (
+            <h1 className="truncate font-serif text-lg leading-tight sm:text-xl">
               {title}
             </h1>
-          )}
+          ) : null}
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-3">
-          {context && (
-            <span className="hidden max-w-[42ch] truncate text-sm text-muted-foreground sm:block">
+          {context ? (
+            <span className="hidden max-w-[30ch] truncate text-sm text-muted-foreground lg:block">
               {context}
             </span>
-          )}
+          ) : null}
           {actions}
-          <UserMenu />
+          <AccountMenu />
         </div>
       </div>
     </header>

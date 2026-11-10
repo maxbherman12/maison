@@ -2,15 +2,24 @@
 
 import type { Project } from '@/lib/types';
 import { formatMoney } from '@/lib/types';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProjectListProps {
   projects: Project[];
+  onNewProject: () => void;
 }
 
-export function ProjectList({ projects }: ProjectListProps) {
+export function ProjectList({ projects, onNewProject }: ProjectListProps) {
   return (
     <div>
-      <h2 className="mb-3 font-serif text-2xl">All projects</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-serif text-2xl">All projects</h2>
+        <Button type="button" onClick={onNewProject}>
+          <Plus aria-hidden="true" />
+          New project
+        </Button>
+      </div>
       <div className="flex flex-col gap-3">
         {projects.map((item) => (
           <a

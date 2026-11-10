@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useProjects } from '@/lib/query/projects';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppShell } from '@/components/layout/AppShell';
-import { Button } from '@/components/ui/button';
 import { ProjectList } from './ProjectList';
 import { ProjectOnboard } from './ProjectOnboard';
 
@@ -13,18 +12,7 @@ export function ProjectsListClient() {
   const [onboarding, setOnboarding] = useState(false);
 
   return (
-    <AppShell
-      header={
-        <AppHeader
-          brand
-          actions={
-            <Button type="button" onClick={() => setOnboarding(true)}>
-              New project
-            </Button>
-          }
-        />
-      }
-    >
+    <AppShell header={<AppHeader />}>
       {onboarding ? (
         <ProjectOnboard onBack={() => setOnboarding(false)} />
       ) : isLoading ? (
@@ -36,7 +24,10 @@ export function ProjectsListClient() {
           <p className="text-destructive">Unable to load projects.</p>
         </div>
       ) : (
-        <ProjectList projects={data ?? []} />
+        <ProjectList
+          projects={data ?? []}
+          onNewProject={() => setOnboarding(true)}
+        />
       )}
     </AppShell>
   );
