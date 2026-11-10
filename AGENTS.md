@@ -147,7 +147,7 @@ No test, lint, or format scripts exist.
 ## Styling
 
 - Tailwind CSS v4 — no `tailwind.config.js`; design tokens as CSS variables in `app/globals.css` (`@theme inline`).
-- Fonts: Italiana (`font-serif`) for names and amounts, Jost for everything else, loaded with `next/font`.
+- Fonts: Marcellus (`font-serif`) for names and amounts, Jost for everything else, loaded with `next/font`.
 - Use the type scale in `globals.css`: `text-hero`, `text-amount`, `text-heading`, `text-name`, `text-base`, `text-label`.
 - Corners are square. The only colors are ink, the client's paint, and red for delete and overdue.
 - Each client owns a paint from `lib/domain/paints.ts`. `paintStyle(paint)` overrides `--primary` on a wrapper, so `bg-primary` and default buttons inside take that color. Portalled content needs its own wrapper, which is why `FlowPanel` takes `paint`.

@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Italiana, Jost } from 'next/font/google';
+import { Jost, Marcellus } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
-const italiana = Italiana({
+const marcellus = Marcellus({
   weight: '400',
   subsets: ['latin'],
-  variable: '--font-italiana',
+  variable: '--font-marcellus',
 });
 const jost = Jost({ subsets: ['latin'], variable: '--font-jost' });
 
@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${italiana.variable} ${jost.variable}`}>
+    <html lang="en" className={`${marcellus.variable} ${jost.variable}`}>
       <body className="flex h-full flex-col overflow-hidden antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

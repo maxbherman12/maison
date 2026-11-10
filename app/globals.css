@@ -16,7 +16,7 @@
 
 @theme inline {
   --font-sans: var(--font-jost), 'Avenir Next', 'Century Gothic', sans-serif;
-  --font-serif: var(--font-italiana), Didot, 'Bodoni 72', Georgia, serif;
+  --font-serif: var(--font-marcellus), Optima, Georgia, serif;
 
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -52,8 +52,11 @@
   --radius-4xl: 0;
 }
 
-/* The one type scale. Italiana for names and amounts, Jost for the rest. */
+/* The one type scale. Marcellus for names and amounts, Jost for the rest. */
 @theme {
+  /* Jost is light at its regular weight, so body text sits slightly above it. */
+  --font-weight-normal: 450;
+
   --text-hero: 6.5rem;
   --text-hero--line-height: 1;
   --text-amount: 3.25rem;
@@ -126,7 +129,7 @@
   --secondary: #f3f3f0;
   --secondary-foreground: #16171a;
   --muted: #f3f3f0;
-  --muted-foreground: #68696d;
+  --muted-foreground: #55565a;
   --accent: #f3f3f0;
   --accent-foreground: #16171a;
   --destructive: #c8321f;
@@ -152,6 +155,6 @@
     overscroll-behavior: none;
   }
   body {
-    @apply bg-background font-sans text-foreground;
+    @apply bg-background font-sans font-normal text-foreground;
   }
 }
