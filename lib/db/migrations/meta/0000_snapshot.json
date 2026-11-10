@@ -1,9 +1,139 @@
 {
-  "id": "30c836d7-18b8-4059-a7da-20643020c4cb",
+  "id": "1074877a-c24b-497a-baac-b09adc5fc60c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.charges": {
+      "name": "charges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hours": {
+          "name": "hours",
+          "type": "numeric(7, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invoice_id": {
+          "name": "invoice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "charges_project_id_idx": {
+          "name": "charges_project_id_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "charges_invoice_id_idx": {
+          "name": "charges_invoice_id_idx",
+          "columns": [
+            {
+              "expression": "invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "charges_project_id_projects_id_fk": {
+          "name": "charges_project_id_projects_id_fk",
+          "tableFrom": "charges",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "charges_invoice_id_invoices_id_fk": {
+          "name": "charges_invoice_id_invoices_id_fk",
+          "tableFrom": "charges",
+          "tableTo": "invoices",
+          "columnsFrom": [
+            "invoice_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "charges_hours_positive": {
+          "name": "charges_hours_positive",
+          "value": "\"charges\".\"hours\" is null or \"charges\".\"hours\" > 0"
+        },
+        "charges_amount_valid": {
+          "name": "charges_amount_valid",
+          "value": "\"charges\".\"amount_cents\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.furniture_items": {
       "name": "furniture_items",
       "schema": "",
@@ -31,17 +161,18 @@
           "name": "vendor",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
-        "retail": {
-          "name": "retail",
-          "type": "real",
+        "retail_cents": {
+          "name": "retail_cents",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "trade": {
-          "name": "trade",
-          "type": "real",
+        "trade_cents": {
+          "name": "trade_cents",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -49,24 +180,27 @@
           "name": "link",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
         "tags": {
           "name": "tags",
-          "type": "jsonb",
+          "type": "text[]",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[]'::jsonb"
+          "default": "'{}'::text[]"
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
         "status": {
           "name": "status",
-          "type": "text",
+          "type": "furniture_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'Pending'"
@@ -79,13 +213,44 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "furniture_items_project_id_idx": {
+          "name": "furniture_items_project_id_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "furniture_items_invoice_id_idx": {
+          "name": "furniture_items_invoice_id_idx",
+          "columns": [
+            {
+              "expression": "invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "furniture_items_project_id_projects_id_fk": {
           "name": "furniture_items_project_id_projects_id_fk",
@@ -110,104 +275,19 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.hour_entries": {
-      "name": "hour_entries",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hours": {
-          "name": "hours",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+      "checkConstraints": {
+        "furniture_items_prices_valid": {
+          "name": "furniture_items_prices_valid",
+          "value": "\"furniture_items\".\"retail_cents\" >= 0 and \"furniture_items\".\"trade_cents\" >= 0"
         }
       },
-      "indexes": {},
-      "foreignKeys": {
-        "hour_entries_project_id_projects_id_fk": {
-          "name": "hour_entries_project_id_projects_id_fk",
-          "tableFrom": "hour_entries",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "hour_entries_invoice_id_invoices_id_fk": {
-          "name": "hour_entries_invoice_id_invoices_id_fk",
-          "tableFrom": "hour_entries",
-          "tableTo": "invoices",
-          "columnsFrom": [
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.invoice_line_items": {
@@ -227,9 +307,10 @@
           "primaryKey": false,
           "notNull": true
         },
-        "source": {
-          "name": "source",
-          "type": "text",
+        "kind": {
+          "name": "kind",
+          "type": "billable_kind",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -245,47 +326,25 @@
           "primaryKey": false,
           "notNull": true
         },
-        "amount": {
-          "name": "amount",
-          "type": "real",
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
+        "position": {
+          "name": "position",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+          "notNull": true
         }
       },
       "indexes": {
-        "invoice_line_items_invoice_id_idx": {
-          "name": "invoice_line_items_invoice_id_idx",
-          "columns": [
-            {
-              "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "invoice_line_items_source_unique": {
           "name": "invoice_line_items_source_unique",
           "columns": [
             {
               "expression": "invoice_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -321,7 +380,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "invoice_line_items_amount_valid": {
+          "name": "invoice_line_items_amount_valid",
+          "value": "\"invoice_line_items\".\"amount_cents\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.invoices": {
@@ -349,91 +413,72 @@
         },
         "number": {
           "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_name": {
+          "name": "client_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_name": {
+          "name": "project_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_cents": {
+          "name": "total_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pathname": {
+          "name": "pathname",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "total": {
-          "name": "total",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid": {
-          "name": "paid",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "pathname": {
-          "name": "pathname",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "sent_at": {
           "name": "sent_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
         "due_at": {
           "name": "due_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
         "paid_at": {
           "name": "paid_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         }
       },
       "indexes": {
-        "invoices_owner_id_idx": {
-          "name": "invoices_owner_id_idx",
-          "columns": [
-            {
-              "expression": "owner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "invoices_project_id_idx": {
           "name": "invoices_project_id_idx",
           "columns": [
             {
               "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "invoices_created_at_idx": {
-          "name": "invoices_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -479,12 +524,30 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
+        },
+        "invoices_project_id_projects_id_fk": {
+          "name": "invoices_project_id_projects_id_fk",
+          "tableFrom": "invoices",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "invoices_total_positive": {
+          "name": "invoices_total_positive",
+          "value": "\"invoices\".\"total_cents\" > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.projects": {
@@ -520,37 +583,18 @@
           "name": "address",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
-        "hourly_rate": {
-          "name": "hourly_rate",
-          "type": "real",
+        "hourly_rate_cents": {
+          "name": "hourly_rate_cents",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "color": {
-          "name": "color",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'sage'"
-        },
-        "initials": {
-          "name": "initials",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outstanding": {
-          "name": "outstanding",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -591,7 +635,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "projects_hourly_rate_positive": {
+          "name": "projects_hourly_rate_positive",
+          "value": "\"projects\".\"hourly_rate_cents\" > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.account": {
@@ -985,7 +1034,27 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.billable_kind": {
+      "name": "billable_kind",
+      "schema": "public",
+      "values": [
+        "hours",
+        "charge",
+        "furniture"
+      ]
+    },
+    "public.furniture_status": {
+      "name": "furniture_status",
+      "schema": "public",
+      "values": [
+        "Pending",
+        "Ordered",
+        "In transit",
+        "Delivered"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

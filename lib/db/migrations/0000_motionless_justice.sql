@@ -1,51 +1,60 @@
+CREATE TYPE "public"."billable_kind" AS ENUM('hours', 'charge', 'furniture');--> statement-breakpoint
+CREATE TYPE "public"."furniture_status" AS ENUM('Pending', 'Ordered', 'In transit', 'Delivered');--> statement-breakpoint
+CREATE TABLE "charges" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
+	"title" text NOT NULL,
+	"date" date NOT NULL,
+	"hours" numeric(7, 2),
+	"amount_cents" integer NOT NULL,
+	"invoice_id" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "charges_hours_positive" CHECK ("charges"."hours" is null or "charges"."hours" > 0),
+	CONSTRAINT "charges_amount_valid" CHECK ("charges"."amount_cents" >= 0)
+);
+--> statement-breakpoint
 CREATE TABLE "furniture_items" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"project_id" uuid NOT NULL,
 	"name" text NOT NULL,
-	"vendor" text,
-	"retail" real NOT NULL,
-	"trade" real NOT NULL,
-	"link" text,
-	"tags" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"notes" text,
-	"status" text DEFAULT 'Pending' NOT NULL,
+	"vendor" text DEFAULT '' NOT NULL,
+	"retail_cents" integer NOT NULL,
+	"trade_cents" integer NOT NULL,
+	"link" text DEFAULT '' NOT NULL,
+	"tags" text[] DEFAULT '{}'::text[] NOT NULL,
+	"notes" text DEFAULT '' NOT NULL,
+	"status" "furniture_status" DEFAULT 'Pending' NOT NULL,
 	"invoice_id" uuid,
-	"created_at" timestamp DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "hour_entries" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"project_id" uuid NOT NULL,
-	"title" text NOT NULL,
-	"date" text NOT NULL,
-	"hours" real NOT NULL,
-	"amount" real NOT NULL,
-	"invoice_id" uuid,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "furniture_items_prices_valid" CHECK ("furniture_items"."retail_cents" >= 0 and "furniture_items"."trade_cents" >= 0)
 );
 --> statement-breakpoint
 CREATE TABLE "invoice_line_items" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"invoice_id" uuid NOT NULL,
-	"source" text NOT NULL,
+	"kind" "billable_kind" NOT NULL,
 	"source_id" uuid NOT NULL,
 	"title" text NOT NULL,
-	"amount" real NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"amount_cents" integer NOT NULL,
+	"position" integer NOT NULL,
+	CONSTRAINT "invoice_line_items_amount_valid" CHECK ("invoice_line_items"."amount_cents" >= 0)
 );
 --> statement-breakpoint
 CREATE TABLE "invoices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" uuid NOT NULL,
 	"project_id" uuid NOT NULL,
-	"number" text NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"total" real NOT NULL,
-	"paid" boolean DEFAULT false NOT NULL,
-	"pathname" text,
-	"sent_at" timestamp,
-	"due_at" timestamp,
-	"paid_at" timestamp
+	"number" integer NOT NULL,
+	"client_name" text NOT NULL,
+	"project_name" text NOT NULL,
+	"address" text NOT NULL,
+	"total_cents" integer NOT NULL,
+	"pathname" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone,
+	"due_at" timestamp with time zone,
+	"paid_at" timestamp with time zone,
+	CONSTRAINT "invoices_total_positive" CHECK ("invoices"."total_cents" > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "projects" (
@@ -53,12 +62,10 @@ CREATE TABLE "projects" (
 	"owner_id" uuid NOT NULL,
 	"client" text NOT NULL,
 	"name" text NOT NULL,
-	"address" text,
-	"hourly_rate" real NOT NULL,
-	"color" text DEFAULT 'sage' NOT NULL,
-	"initials" text NOT NULL,
-	"outstanding" real DEFAULT 0 NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"address" text DEFAULT '' NOT NULL,
+	"hourly_rate_cents" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "projects_hourly_rate_positive" CHECK ("projects"."hourly_rate_cents" > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "account" (
@@ -114,20 +121,22 @@ CREATE TABLE "verification" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "charges" ADD CONSTRAINT "charges_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "charges" ADD CONSTRAINT "charges_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "furniture_items" ADD CONSTRAINT "furniture_items_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "furniture_items" ADD CONSTRAINT "furniture_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "hour_entries" ADD CONSTRAINT "hour_entries_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "hour_entries" ADD CONSTRAINT "hour_entries_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "furniture_items" ADD CONSTRAINT "furniture_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invoice_line_items" ADD CONSTRAINT "invoice_line_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invoices" ADD CONSTRAINT "invoices_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "projects" ADD CONSTRAINT "projects_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "invoice_line_items_invoice_id_idx" ON "invoice_line_items" USING btree ("invoice_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "invoice_line_items_source_unique" ON "invoice_line_items" USING btree ("invoice_id","source","source_id");--> statement-breakpoint
-CREATE INDEX "invoices_owner_id_idx" ON "invoices" USING btree ("owner_id");--> statement-breakpoint
+CREATE INDEX "charges_project_id_idx" ON "charges" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX "charges_invoice_id_idx" ON "charges" USING btree ("invoice_id");--> statement-breakpoint
+CREATE INDEX "furniture_items_project_id_idx" ON "furniture_items" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX "furniture_items_invoice_id_idx" ON "furniture_items" USING btree ("invoice_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "invoice_line_items_source_unique" ON "invoice_line_items" USING btree ("invoice_id","source_id");--> statement-breakpoint
 CREATE INDEX "invoices_project_id_idx" ON "invoices" USING btree ("project_id");--> statement-breakpoint
-CREATE INDEX "invoices_created_at_idx" ON "invoices" USING btree ("created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "invoices_owner_number_unique" ON "invoices" USING btree ("owner_id","number");--> statement-breakpoint
 CREATE INDEX "projects_owner_id_idx" ON "projects" USING btree ("owner_id");--> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
