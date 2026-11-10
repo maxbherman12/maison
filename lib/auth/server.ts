@@ -58,7 +58,7 @@ export const auth = betterAuth({
           }
 
           // Everyone starts as a regular user. Admin access is the database
-          // role; set `user.role = 'admin'` for the first admin.
+          // role; set `users.role = 'admin'` for the first admin.
           return {
             data: {
               ...newUser,

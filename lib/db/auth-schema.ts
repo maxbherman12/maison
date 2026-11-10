@@ -8,7 +8,7 @@ import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-c
  * The `role`, `banned`, `banReason`, `banExpires`, and `impersonatedBy` columns
  * come from the Better Auth admin plugin.
  */
-export const user = pgTable('user', {
+export const user = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
