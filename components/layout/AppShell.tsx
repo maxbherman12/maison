@@ -4,11 +4,12 @@ import { AppHeader } from './AppHeader';
 
 interface AppShellProps {
   children: ReactNode;
+  /** Replaces the content padding, for routes with their own footer. */
   contentClassName?: string;
   /**
    * Fill the viewport instead of letting `<main>` scroll. Use for routes whose
-   * panels own their internal scroll (project detail, invoices, composer).
-   * Every `overflow-y-auto` child must be inside a `min-h-0` flex chain.
+   * panels own their internal scroll. Every `overflow-y-auto` child must be
+   * inside a `min-h-0` flex chain.
    */
   fill?: boolean;
 }
@@ -38,8 +39,10 @@ export function AppShell({
       >
         <div
           className={cn(
-            'mx-auto w-full max-w-[1380px] px-4 pt-8 pb-[calc(2rem_+_env(safe-area-inset-bottom))] sm:px-6 lg:px-8',
-            fill && 'flex min-h-0 flex-1 flex-col',
+            'mx-auto w-full max-w-[1380px] px-4 sm:px-6 lg:px-8',
+            fill
+              ? 'flex min-h-0 flex-1 flex-col pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] sm:pt-6 sm:pb-6'
+              : 'pt-8 pb-[calc(2rem_+_env(safe-area-inset-bottom))]',
             contentClassName
           )}
         >

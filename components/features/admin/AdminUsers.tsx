@@ -2,20 +2,13 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { authClient } from '@/lib/auth-client';
+import type { AccountSummary } from '@/lib/auth/accounts';
+import { authClient } from '@/lib/auth/client';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
-export interface AdminUserRow {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  banned: boolean;
-}
-
 interface AdminUsersProps {
-  users: AdminUserRow[];
+  users: AccountSummary[];
   currentUserId: string;
   /** False while IMPERSONATE_USER controls the dev session. */
   impersonationEnabled?: boolean;
@@ -27,7 +20,6 @@ export function AdminUsers({
   impersonationEnabled = true,
 }: AdminUsersProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -48,9 +40,6 @@ export function AdminUsers({
         return;
       }
 
-      // Better Auth has already refreshed its session atom. Drop every query
-      // so no component can render the admin account's cached rows.
-      queryClient.clear();
       router.push('/projects');
       router.refresh();
     });
@@ -67,14 +56,7 @@ export function AdminUsers({
 
   return (
     <div className="space-y-3">
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {error}
-        </p>
-      ) : null}
+      {error && <Alert>{error}</Alert>}
 
       <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
         {users.map((account) => {

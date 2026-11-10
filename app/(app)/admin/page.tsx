@@ -11,17 +11,8 @@ export const metadata: Metadata = {
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  const impersonationEnabled = !devImpersonationUserId();
-
   const users = await listAccounts();
-
-  const rows = users.map((account) => ({
-    id: account.id,
-    name: account.name,
-    email: account.email,
-    role: account.role ?? 'user',
-    banned: Boolean(account.banned),
-  }));
+  const impersonationEnabled = !devImpersonationUserId();
 
   return (
     <AppShell>
@@ -39,7 +30,7 @@ export default async function AdminPage() {
         </p>
         <div className="mt-8">
           <AdminUsers
-            users={rows}
+            users={users}
             currentUserId={admin.id}
             impersonationEnabled={impersonationEnabled}
           />
