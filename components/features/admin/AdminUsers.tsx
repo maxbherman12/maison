@@ -47,7 +47,7 @@ export function AdminUsers({
 
   if (users.length === 0) {
     return (
-      <p className="rounded-2xl border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+      <p className="py-6 text-sm text-muted-foreground">
         No accounts yet. The first person to sign in with an allowed email will
         appear here.
       </p>
@@ -58,7 +58,7 @@ export function AdminUsers({
     <div className="space-y-3">
       {error && <Alert>{error}</Alert>}
 
-      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <ul className="divide-y divide-border border-y border-border">
         {users.map((account) => {
           const isSelf = account.id === currentUserId;
           const isAdmin = account.role === 'admin';
@@ -72,7 +72,7 @@ export function AdminUsers({
           return (
             <li
               key={account.id}
-              className="flex items-center justify-between gap-4 px-4 py-3"
+              className="flex items-center justify-between gap-4 py-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">

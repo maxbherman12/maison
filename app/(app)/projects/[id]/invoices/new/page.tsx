@@ -1,5 +1,5 @@
 import { InvoiceComposer } from '@/components/features/invoices/InvoiceComposer';
-import { AppShell } from '@/components/layout/AppShell';
+import { FlowPanel } from '@/components/layout/FlowPanel';
 import { loadProject } from '../../load-project';
 
 export default async function NewInvoicePage({
@@ -10,8 +10,12 @@ export default async function NewInvoicePage({
   const { project } = await loadProject(params);
 
   return (
-    <AppShell fill contentClassName="pb-0 sm:pb-0">
+    <FlowPanel
+      title="New invoice"
+      closeHref={`/projects/${project.id}`}
+      paint={project.paint}
+    >
       <InvoiceComposer project={project} issueDate={new Date()} />
-    </AppShell>
+    </FlowPanel>
   );
 }

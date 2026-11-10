@@ -5,7 +5,7 @@
  * may use the app. It is comma-separated and case-insensitive. Missing or empty
  * denies everyone — there is no open mode.
  *
- * Admin access is not configured here: `user.role` is the single source of
+ * Admin access is not configured here: `users.role` is the single source of
  * truth, enforced by Better Auth's admin plugin.
  */
 

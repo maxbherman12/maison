@@ -26,15 +26,9 @@ function renamePrices<T>({ retail, trade, ...item }: PriceFields<T>) {
   return { ...item, retailCents: retail, tradeCents: trade };
 }
 
-export const AddFurnitureSchema = z
-  .object(furnitureFields)
-  .transform(renamePrices);
-
-export const EditFurnitureSchema = z
+export const FurnitureSchema = z
   .object({ ...furnitureFields, status: FurnitureStatusSchema })
   .transform(renamePrices);
 
-export type AddFurnitureFormValues = z.input<typeof AddFurnitureSchema>;
-export type AddFurnitureInput = z.output<typeof AddFurnitureSchema>;
-export type EditFurnitureFormValues = z.input<typeof EditFurnitureSchema>;
-export type EditFurnitureInput = z.output<typeof EditFurnitureSchema>;
+export type FurnitureFormValues = z.input<typeof FurnitureSchema>;
+export type FurnitureInput = z.output<typeof FurnitureSchema>;

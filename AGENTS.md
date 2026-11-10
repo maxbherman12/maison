@@ -35,7 +35,7 @@ lib/validators/      → Zod schemas, one per form, shared by client and server
 lib/db/              → Drizzle schema + Postgres client
 lib/auth/            → Better Auth server/client, session helpers, allowlist
 components/ui/       → base primitives
-components/layout/   → AppShell, AppHeader, BackLink
+components/layout/   → AppShell, AppHeader, AppNav, FlowPanel, Confirmation
 components/features/ → feature components
 ```
 
@@ -78,7 +78,7 @@ No test, lint, or format scripts exist.
 - `proxy.ts` only checks that a session cookie exists for page routes (or that the development-only `IMPERSONATE_USER` switch is active). Every route handler and page verifies the real session and re-checks the allowlist, so removing an email locks out an existing cookie on its next request.
 - Data is isolated per account. `projects.owner_id` and `invoices.owner_id` are `NOT NULL`; `hour_entries` and `furniture_items` inherit ownership through their project. Services take `ownerId` in the constructor, so there is no unscoped query path. Never build services with a client-supplied id.
 - Invoice numbers are per account: the advisory lock key is `invoice_number:<ownerId>` and the unique index is `(owner_id, number)`.
-- Admin access is the `role` column on `user` (`admin`), and that column is the only source of truth. Set it directly in Postgres for now; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped services. The banner in `app/(app)/layout.tsx` is the way back.
+- Admin access is the `role` column on `users` (`admin`), and that column is the only source of truth. Set it directly in Postgres for now; the change takes effect on the next request. Admins can impersonate non-admin accounts for up to one hour from `/admin`; impersonation swaps the session identity, so it still goes through the owner-scoped services. The banner in `app/(app)/layout.tsx` is the way back.
 - There is no `legacy-owner` placeholder. The auth migration is a clean UUID baseline; an older database must be reset, not backfilled.
 - Google Cloud setup: External consent screen, publish it (basic scopes need no review), redirect URIs `http://localhost:3000/api/auth/callback/google` and `https://<domain>/api/auth/callback/google`.
 
@@ -102,7 +102,7 @@ No test, lint, or format scripts exist.
 ## State management
 
 - Server state lives in Server Components. There is no client data cache. After a mutation, `runAction` calls `revalidatePath('/', 'layout')` and the new props arrive in the action's response.
-- Call actions from client components with `useAction()` (`lib/actions/use-action.ts`), which provides `run`, `pending`, and `error`. Use `useOptimistic` over server props for instant feedback; the furniture board is the example.
+- Call actions from client components with `useAction()` (`lib/actions/use-action.ts`), which provides `run`, `pending`, and `error`. Use `useOptimistic` over server props for instant feedback; `FurnitureList` is the example.
 - Store ids in client state and derive objects from props, so a sheet closes by itself if its item disappears. Do not use effects to sync derived state.
 - Forms: React Hook Form + `zodResolver(schema, undefined, { raw: true })`. Shared field sets read the form through `FormProvider`.
 
@@ -111,43 +111,46 @@ No test, lint, or format scripts exist.
 - `app/(app)/` — authenticated routes, wrapped by a layout that verifies the session, plus `error.tsx`, `loading.tsx`, and `not-found.tsx`.
 - `app/(auth)/sign-in` — public Google sign-in page.
 - `/` — redirects to `/projects`
-- `/projects` — project list; `/projects/new` — create a project
-- `/projects/[id]` — project overview. Fills the viewport and switches between **Pending** and **Invoices** tabs.
-- `/projects/[id]/log` — log hours, furniture, and custom charges
-- `/projects/[id]/board` — furniture board
-- `/projects/[id]/invoices` — invoice ledger with a summary strip and an internally scrolling list
-- `/projects/[id]/invoices/new` — invoice composer; preview and item panels scroll independently, with the total/generate footer outside both
-- `/projects/[id]/invoices/[invoiceId]` — invoice detail; the document scrolls inside its own panel
+- `/projects` — client list on phones; the first project on desktop, beside the sidebar from `projects/layout.tsx`
+- `/projects/[id]` — project overview, rendered by `[id]/layout.tsx` so it stays mounted behind flows. Its `page.tsx` is intentionally empty.
+- Flows, each rendered in `FlowPanel`: `/projects/new`, `/projects/[id]/edit`, `/projects/[id]/log` (`?type=furniture` skips the type question), `/projects/[id]/items/[itemId]`, `/projects/[id]/invoices/new`, `/projects/[id]/invoices/[invoiceId]`
+- `/earnings` — money received by month and by client
 - `/settings` — placeholder settings page
 - `/admin` — admin-only account list with impersonation
 - Routes under `/projects/[id]` load through `load-project.ts`, which renders not-found for a bad or unowned id.
 
 ## Layout and scrolling
 
-- `AppShell` renders the app's single `<main>` and owns the menu bar (`AppHeader`), which is identical on every page: the Maison wordmark (→ `/projects`) on the left and the account menu on the right. Routes never pass anything into the header.
-- Pages own their own navigation and identity instead: back links (`components/layout/BackLink.tsx`), headings, and context live in page content, not the header.
-- By default `<main>` scrolls. Pass `fill` to `AppShell` for viewport-first routes; the shell then makes `<main>` a non-scrolling flex column; the route must build a `min-h-0` flex chain and own its inner scroll regions.
-- `fill` is used by project overview, invoice index, composer, and invoice detail, and sets their compact padding. Forms, the board, and the project list keep the default page scroll.
+- `AppShell` renders the app's single `<main>`, `AppHeader`, and the phone `BottomNav`. To add a main page, add it to `PAGES` in `components/layout/AppNav.tsx`.
+- On phones, routes under `/projects/` hide the header and bottom menu, because the project's painted wall replaces them.
+- `FlowPanel` is a task on its own route: full screen on phones, a right-hand drawer on desktop. Build its contents from `FlowBody` (scrolls if long) and `FlowFooter`.
+- The core of every phone screen must fit without scrolling. Only a list that grows with the user's data may scroll, inside its own panel.
+- By default `<main>` scrolls. Pass `fill` to `AppShell` for viewport-first routes; the shell then makes `<main>` a non-scrolling flex column and the route must build a `min-h-0` flex chain.
 - Use `overflow-y-auto overscroll-contain` only on the panel that genuinely needs to scroll. Do not add full-height page wrappers; the shell owns the viewport.
 
 ## Billing model
 
 - Billable items are `charges` and `furniture_items`. A charge with `hours` is logged time; a charge with null `hours` is a flat custom charge. `invoice_id` points at the invoice it was billed on; `null` means pending.
-- `buildBillableItems` in `lib/domain/billing.ts` derives pending items for the pending list, the composer, and generated invoices, so they always agree.
+- `buildBillableItems` in `lib/domain/billing.ts` derives pending items for the project lists, the composer, and generated invoices, so they always agree.
 - `outstanding` is a SQL aggregate of uninvoiced items. Nothing stores it.
+- There is no email sending. Creating an invoice makes the PDF; the designer sends it and marks it sent.
 - Invoiced items are locked: only furniture status can change. Services return a 409 for anything else.
 - `InvoiceService.generate` is one transaction: lock per owner, lock the pending rows, recompute amounts from the database, allocate the number, snapshot the bill-to details and line items, render the PDF, upload, commit. The client only sends item ids.
 - Invoice numbers are integers per account, displayed with `formatInvoiceNumber`.
 - Invoice status is derived from `sent_at`, `due_at`, and `paid_at`.
 
-## Tables
+## Lists
 
-- `PendingItemsTable` and `InvoicesTable` are semantic tables on desktop and cards on phones, switched at `md`.
+- Project lists live in `components/features/projects/ProjectLists.tsx`. Each item appears in exactly one list.
 - Rows must be keyboard reachable through a real button or link, not only a row click.
 
 ## Styling
 
 - Tailwind CSS v4 — no `tailwind.config.js`; design tokens as CSS variables in `app/globals.css` (`@theme inline`).
+- Fonts: Marcellus (`font-serif`) for names and amounts, Jost for everything else, loaded with `next/font`.
+- Use the type scale in `globals.css`: `text-hero`, `text-amount`, `text-heading`, `text-name`, `text-base`, `text-label`.
+- Corners are square. The only colors are ink, the client's paint, and red for delete and overdue.
+- Each client owns a paint from `lib/domain/paints.ts`. `paintStyle(paint)` overrides `--primary` on a wrapper, so `bg-primary` and default buttons inside take that color. Portalled content needs its own wrapper, which is why `FlowPanel` takes `paint`.
 - Use `cn()` from `@/lib/utils` (`clsx` + `tailwind-merge`) for class merging.
 - Icons from `lucide-react`.
 - Path alias `@/*` → `./*`.
@@ -155,8 +158,8 @@ No test, lint, or format scripts exist.
 ## Environment
 
 - `.env.local` requires `DATABASE_URL`. Set `BLOB_DRIVER=local` for filesystem-backed invoice PDFs (stored in `.data/blobs/`). In production leave it unset (or set `vercel`); Vercel Blob needs `BLOB_READ_WRITE_TOKEN` or OIDC and private blob access. Do not commit real tokens.
-- Development-only auth bypass: set `IMPERSONATE_USER=<user uuid>` in `.env.local` and restart `pnpm dev` to act as that account without Google OAuth. Find UUIDs with `select id, email from "user";`. The variable is ignored in production; remove it (and restart) to return to Google sign-in. While active, the admin page is read-only and sign-out has no effect.
-- Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. After the first sign-in, set `user.role = 'admin'` in Postgres. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
+- Development-only auth bypass: set `IMPERSONATE_USER=<user uuid>` in `.env.local` and restart `pnpm dev` to act as that account without Google OAuth. Find UUIDs with `select id, email from users;`. The variable is ignored in production; remove it (and restart) to return to Google sign-in. While active, the admin page is read-only and sign-out has no effect.
+- Auth also requires `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`. After the first sign-in, set `users.role = 'admin'` in Postgres. Set `BETTER_AUTH_URL` to the production origin; leave it unset on Preview so Better Auth infers the host.
 - `.gitignore` excludes `node_modules`, `.next/`, `.vercel/`, `.data/`, `.env*.local`, `tsconfig.tsbuildinfo`.
 
 ## Version control

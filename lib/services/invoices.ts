@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  gte,
   inArray,
   isNull,
   sql,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/db/schema';
 import { buildBillableItems, totalCents } from '@/lib/domain/billing';
 import { addDays } from '@/lib/domain/dates';
+import type { PaidInvoice } from '@/lib/domain/earnings';
 import { isUuid } from '@/lib/domain/ids';
 import type {
   InvoiceDetail,
@@ -60,6 +62,24 @@ export class InvoiceService {
         and(eq(invoices.projectId, projectId), eq(invoices.ownerId, this.ownerId))
       )
       .orderBy(desc(invoices.number));
+  }
+
+  async paidSince(since: Date): Promise<PaidInvoice[]> {
+    const rows = await db
+      .select({
+        projectId: invoices.projectId,
+        client: projects.client,
+        paint: projects.paint,
+        totalCents: invoices.totalCents,
+        paidAt: invoices.paidAt,
+      })
+      .from(invoices)
+      .innerJoin(projects, eq(invoices.projectId, projects.id))
+      .where(and(eq(invoices.ownerId, this.ownerId), gte(invoices.paidAt, since)));
+
+    return rows.flatMap(({ paidAt, ...row }) =>
+      paidAt ? [{ ...row, paidAt }] : []
+    );
   }
 
   async get(id: string): Promise<InvoiceDetail | null> {

@@ -30,14 +30,3 @@ export interface InvoiceListItem extends Invoice {
 export interface InvoiceDetail extends Invoice {
   lineItems: InvoiceLineItem[];
 }
-
-/** Initials for a client's avatar, derived so a rename can never leave them stale. */
-export function clientInitials(client: string): string {
-  return client
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
-}

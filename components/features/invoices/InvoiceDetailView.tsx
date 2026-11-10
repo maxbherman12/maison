@@ -1,22 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Download, FileText, Send } from 'lucide-react';
 import { markInvoicePaid, markInvoiceSent } from '@/lib/actions/invoices';
 import { useAction } from '@/lib/actions/use-action';
+import { BILLABLE_KIND_LABELS } from '@/lib/domain/billing';
 import { formatDate } from '@/lib/domain/dates';
-import { formatInvoiceNumber, getInvoiceStatus } from '@/lib/domain/invoices';
+import {
+  formatInvoiceNumber,
+  getInvoiceStatus,
+  type InvoiceStatus,
+} from '@/lib/domain/invoices';
 import { formatMoney } from '@/lib/domain/money';
 import type { InvoiceDetail } from '@/lib/domain/types';
 import { cn } from '@/lib/utils';
-import { BackLink } from '@/components/layout/BackLink';
+import { FlowBack, FlowBody, FlowFooter } from '@/components/layout/FlowPanel';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { StatTile } from '@/components/ui/stat-tile';
 import { InvoiceDocument } from './InvoiceDocument';
-import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
 const CONFIRMATIONS = {
   sent: {
@@ -35,134 +36,111 @@ const CONFIRMATIONS = {
 
 type Confirmation = keyof typeof CONFIRMATIONS;
 
-const ICON_LINK_CLASS = cn(
-  buttonVariants({ variant: 'outline', size: 'icon' }),
-  'text-primary'
-);
+const NEXT_STEP: Record<InvoiceStatus, Confirmation | null> = {
+  Issued: 'sent',
+  Sent: 'paid',
+  Overdue: 'paid',
+  Paid: null,
+};
 
-export function InvoiceDetailView({ invoice }: { invoice: InvoiceDetail }) {
+function statusLine(invoice: InvoiceDetail, status: InvoiceStatus): string {
+  switch (status) {
+    case 'Issued':
+      return 'Not sent yet';
+    case 'Sent':
+      return `Due ${formatDate(invoice.dueAt)}`;
+    case 'Overdue':
+      return `Overdue since ${formatDate(invoice.dueAt)}`;
+    case 'Paid':
+      return `Paid ${formatDate(invoice.paidAt)}`;
+  }
+}
+
+export function InvoiceDetailView({
+  invoice,
+  closeHref,
+}: {
+  invoice: InvoiceDetail;
+  closeHref: string;
+}) {
   const [confirming, setConfirming] = useState<Confirmation | null>(null);
   const { run, pending, error } = useAction();
 
   const status = getInvoiceStatus(invoice);
   const number = formatInvoiceNumber(invoice.number);
-  const pdfHref = `/api/invoices/${invoice.id}/pdf`;
+  const nextStep = NEXT_STEP[status];
   const confirmation = confirming && CONFIRMATIONS[confirming];
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-3 pb-3">
-        <BackLink
-          href={`/projects/${invoice.projectId}/invoices`}
-          label="Invoices"
-        />
-        <p className="shrink-0 truncate text-sm font-medium">{number}</p>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <InvoiceStatusBadge status={status} />
-          <p className="hidden truncate text-xs text-muted-foreground sm:block">
-            {formatDate(invoice.createdAt)}
-          </p>
+    <>
+      <FlowBody>
+        <div>
+          <FlowBack href={closeHref} />
         </div>
-
-        <div className="flex items-center gap-2">
-          {status === 'Issued' && (
-            <Button
-              type="button"
-              onClick={() => setConfirming('sent')}
-              disabled={pending}
-              className="h-10 px-3"
-            >
-              <Send className="size-4" />
-              Mark sent
-            </Button>
-          )}
-          {(status === 'Sent' || status === 'Overdue') && (
-            <Button
-              type="button"
-              variant="success"
-              onClick={() => setConfirming('paid')}
-              disabled={pending}
-              className="h-10 px-3"
-            >
-              <CheckCircle2 className="size-4" />
-              Mark paid
-            </Button>
-          )}
-          {status === 'Paid' && (
-            <Badge tone="success" className="h-10 gap-1.5 rounded-xl px-3 text-sm">
-              <CheckCircle2 className="size-4" /> Paid
-            </Badge>
-          )}
-
-          <a
-            href={pdfHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View PDF"
-            title="View PDF"
-            className={ICON_LINK_CLASS}
-          >
-            <FileText className="size-4" />
-          </a>
-          <a
-            href={pdfHref}
-            download
-            aria-label="Download PDF"
-            title="Download PDF"
-            className={ICON_LINK_CLASS}
-          >
-            <Download className="size-4" />
-          </a>
-        </div>
-      </div>
-
-      {error && !confirmation && <Alert className="mb-3 shrink-0">{error}</Alert>}
-
-      <div className="grid grid-cols-2 gap-2 pb-3 sm:grid-cols-4">
-        <StatTile label="Issued" value={formatDate(invoice.createdAt)} />
-        <StatTile
-          label="Due"
-          value={invoice.dueAt ? formatDate(invoice.dueAt) : 'Not set'}
-        />
-        <StatTile label="Paid" value={formatDate(invoice.paidAt)} />
-        <StatTile label="Total" value={formatMoney(invoice.totalCents)} />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
         <InvoiceDocument
           label={`Invoice ${number}`}
-          meta={
-            <>
-              <p className="text-sm font-medium">{number}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(invoice.createdAt)}
-              </p>
-            </>
-          }
           billTo={{
             client: invoice.clientName,
             project: invoice.projectName,
             address: invoice.address,
           }}
-          summary={
+          side={
             <>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                {status === 'Paid' ? 'Paid in full' : 'Amount due'}
-              </p>
-              <p className="mt-2 font-serif text-3xl">
-                {formatMoney(invoice.totalCents)}
-              </p>
+              Issued
+              <b className="block text-base font-medium text-foreground">
+                {formatDate(invoice.createdAt)}
+              </b>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5',
+                  status === 'Overdue' && 'text-destructive'
+                )}
+              >
+                {status === 'Overdue' && (
+                  <i className="size-2 rounded-full bg-destructive" aria-hidden="true" />
+                )}
+                {statusLine(invoice, status)}
+              </span>
             </>
           }
-          lineItems={invoice.lineItems}
-          footnote="This invoice records the line items as they were when it was generated."
-          totalLabel="Total"
           totalCents={invoice.totalCents}
-        />
-      </div>
+        >
+          {invoice.lineItems.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 py-1.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{item.title}</span>
+                <span className="block text-label text-muted-foreground">
+                  {BILLABLE_KIND_LABELS[item.kind]}
+                </span>
+              </span>
+              <span className="shrink-0 tabular-nums">
+                {formatMoney(item.amountCents)}
+              </span>
+            </div>
+          ))}
+        </InvoiceDocument>
+        {error && !confirmation && <Alert className="mt-3">{error}</Alert>}
+      </FlowBody>
+
+      <FlowFooter>
+        <a
+          href={`/api/invoices/${invoice.id}/pdf`}
+          download
+          className={buttonVariants({ variant: 'outline', size: 'xl' })}
+        >
+          Download PDF
+        </a>
+        {nextStep && (
+          <Button
+            type="button"
+            size="xl"
+            disabled={pending}
+            onClick={() => setConfirming(nextStep)}
+          >
+            {CONFIRMATIONS[nextStep].label}
+          </Button>
+        )}
+      </FlowFooter>
 
       {confirmation && (
         <ConfirmDialog
@@ -178,6 +156,6 @@ export function InvoiceDetailView({ invoice }: { invoice: InvoiceDetail }) {
           }
         />
       )}
-    </div>
+    </>
   );
 }

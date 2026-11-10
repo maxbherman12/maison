@@ -1,10 +1,18 @@
-import { NewProjectForm } from '@/components/features/projects/NewProjectForm';
-import { AppShell } from '@/components/layout/AppShell';
+import { ProjectForm } from '@/components/features/projects/ProjectForm';
+import { FlowPanel } from '@/components/layout/FlowPanel';
+import { nextPaint } from '@/lib/domain/paints';
+import { getServices } from '@/lib/services';
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  const { projects } = await getServices();
+  const existing = await projects.list();
+
   return (
-    <AppShell>
-      <NewProjectForm />
-    </AppShell>
+    <FlowPanel title="New project" closeHref="/projects">
+      <ProjectForm
+        closeHref="/projects"
+        initialPaint={nextPaint(existing.map((project) => project.paint))}
+      />
+    </FlowPanel>
   );
 }

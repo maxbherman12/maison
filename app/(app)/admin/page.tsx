@@ -16,11 +16,11 @@ export default async function AdminPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-3xl">
-        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="w-full max-w-3xl md:mx-auto">
+        <span className="text-label text-muted-foreground">
           Admin
         </span>
-        <h1 className="mt-2 font-serif text-3xl leading-tight sm:text-4xl">
+        <h1 className="mt-1 font-serif text-heading font-normal">
           Accounts
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">

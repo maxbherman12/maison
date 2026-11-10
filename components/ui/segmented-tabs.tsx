@@ -47,10 +47,7 @@ export function SegmentedTabs<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn(
-        'grid gap-1 rounded-xl border border-border bg-muted p-1',
-        className
-      )}
+      className={cn('relative grid border-b border-border', className)}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item) => {
@@ -89,29 +86,26 @@ export function SegmentedTabs<T extends string>({
               }
             }}
             className={cn(
-              'flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors sm:h-10',
-              selected
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+              'flex h-12 items-center justify-center gap-1 text-sm transition-colors',
+              selected ? 'text-foreground' : 'text-muted-foreground'
             )}
           >
             {item.icon}
             {item.label}
             {item.count != null && (
-              <span
-                className={cn(
-                  'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] leading-5 tabular-nums',
-                  selected
-                    ? 'bg-accent text-accent-foreground'
-                    : 'bg-border text-muted-foreground'
-                )}
-              >
-                {item.count}
-              </span>
+              <span className="text-label tabular-nums">{item.count}</span>
             )}
           </button>
         );
       })}
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-px left-0 h-0.5 bg-primary transition-transform duration-300 ease-gallery"
+        style={{
+          width: `${100 / items.length}%`,
+          transform: `translateX(${items.findIndex((item) => item.value === value) * 100}%)`,
+        }}
+      />
     </div>
   );
 }

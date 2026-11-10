@@ -1,0 +1,2 @@
+CREATE TYPE "public"."paint" AS ENUM('verdigris', 'aubergine', 'ochre', 'delft', 'oxblood', 'moss', 'blush', 'ink');--> statement-breakpoint
+ALTER TABLE "projects" ADD COLUMN "paint" "paint" DEFAULT 'verdigris' NOT NULL;

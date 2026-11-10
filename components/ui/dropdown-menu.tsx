@@ -37,7 +37,7 @@ function DropdownMenuContent({
       >
         <Menu.Popup
           className={cn(
-            'min-w-52 origin-[var(--transform-origin)] rounded-2xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg shadow-foreground/5 outline-none transition-[transform,opacity] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
+            'min-w-52 origin-[var(--transform-origin)] border border-border bg-popover py-1.5 text-popover-foreground shadow-xl shadow-foreground/15 outline-none transition-[transform,opacity] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
             className
           )}
         >
@@ -49,7 +49,7 @@ function DropdownMenuContent({
 }
 
 const itemClassName =
-  'flex cursor-default select-none items-center gap-2.5 rounded-xl px-3 py-2 text-sm outline-none transition-colors data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-muted [&_svg]:size-4 [&_svg]:shrink-0';
+  'flex min-h-11 cursor-default select-none items-center gap-3 px-4 text-base outline-none transition-colors data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-muted [&_svg]:size-4 [&_svg]:shrink-0';
 
 function DropdownMenuItem({ className, ...props }: Menu.Item.Props) {
   return <Menu.Item className={cn(itemClassName, className)} {...props} />;
@@ -75,7 +75,7 @@ function DropdownMenuSeparator({
 }: Menu.Separator.Props) {
   return (
     <Menu.Separator
-      className={cn('-mx-1.5 my-1.5 h-px bg-border', className)}
+      className={cn('my-1.5 h-px bg-border', className)}
       {...props}
     />
   );

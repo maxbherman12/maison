@@ -8,6 +8,9 @@ export const FURNITURE_STATUSES = [
 
 export type FurnitureStatus = (typeof FURNITURE_STATUSES)[number];
 
-export function isFurnitureStatus(value: unknown): value is FurnitureStatus {
-  return FURNITURE_STATUSES.includes(value as FurnitureStatus);
-}
+export const FURNITURE_STATUS_LABELS: Record<FurnitureStatus, string> = {
+  Pending: 'To order',
+  Ordered: 'Ordered',
+  'In transit': 'In transit',
+  Delivered: 'Delivered',
+};
