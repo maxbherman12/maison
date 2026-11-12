@@ -18,7 +18,7 @@ If you discover feature work already sitting on `main` or uncommitted in the mai
 
 All feature work happens in a treehouse worktree.
 - Detect: `git rev-parse --git-dir` vs `--git-common-dir` differ inside a worktree.
-- Main checkout: `treehouse get --lease --json`, then move into the printed `path` (add `-b <branch>`; default is detached HEAD). Fresh worktrees need `pnpm install` + a copy of `.env.local`.
+- Main checkout: `treehouse get --lease --json`, then move into the printed `path` (add `-b <branch>`; default is detached HEAD). Fresh worktrees need `pnpm install`. Treehouse copies `.env.local` from the main checkout on every `get` (`.worktreeinclude`); never copy it by hand, or the next `get` of that slot fails seeding and quarantines it.
 - Already in a worktree: stay there; acquire another only if instructed, and ask if unclear.
 - Done: `treehouse return <path>`. Pool: `treehouse status`; protect a slot: `treehouse lease <name>`.
 
