@@ -22,6 +22,8 @@ import { buildBillableItems, totalCents } from '@/lib/domain/billing';
 import { addDays } from '@/lib/domain/dates';
 import type { PaidInvoice } from '@/lib/domain/earnings';
 import { isUuid } from '@/lib/domain/ids';
+import { PAINTS } from '@/lib/domain/paints';
+import { invoiceIssuer } from '@/lib/domain/settings';
 import type {
   InvoiceDetail,
   InvoiceListItem,
@@ -30,14 +32,9 @@ import { AppError } from '@/lib/errors';
 import { renderInvoicePdf } from '@/lib/invoices/pdf';
 import type { BlobContent, BlobStore } from '@/lib/storage/blob-store';
 import type { GenerateInvoiceInput } from '@/lib/validators/invoices';
+import type { SettingsService } from './settings';
 
 const FIRST_INVOICE_NUMBER = 1042;
-const DEFAULT_DUE_DAYS = 14;
-
-function dueDays(): number {
-  const days = Number.parseInt(process.env.INVOICE_DUE_DAYS ?? '', 10);
-  return Number.isFinite(days) && days >= 0 ? days : DEFAULT_DUE_DAYS;
-}
 
 // The storage key and owner never leave the server.
 const { pathname: _pathname, ownerId: _ownerId, ...publicColumns } =
@@ -51,7 +48,10 @@ const lineItemCount = sql<number>`(
 export class InvoiceService {
   constructor(
     private readonly ownerId: string,
-    private readonly blobs: BlobStore
+    private readonly blobs: BlobStore,
+    private readonly settings: SettingsService,
+    /** The letterhead when the account has no company name. */
+    private readonly ownerName: string
   ) {}
 
   list(projectId: string): Promise<InvoiceListItem[]> {
@@ -111,6 +111,8 @@ export class InvoiceService {
     const id = crypto.randomUUID();
     const pathname = `invoices/${this.ownerId}/${id}.pdf`;
     let uploaded = false;
+    const settings = await this.settings.get();
+    const issuer = invoiceIssuer(settings, this.ownerName);
 
     try {
       await db.transaction(async (tx) => {
@@ -179,6 +181,10 @@ export class InvoiceService {
           clientName: project.client,
           projectName: project.name,
           address: project.address,
+          style: settings.invoiceStyle,
+          fromName: issuer.name,
+          fromDetails: issuer.details,
+          paymentNote: settings.paymentNote,
           totalCents: total,
           pathname,
           createdAt,
@@ -214,6 +220,10 @@ export class InvoiceService {
           clientName: project.client,
           projectName: project.name,
           address: project.address,
+          style: settings.invoiceStyle,
+          from: issuer,
+          paymentNote: settings.paymentNote,
+          accentColor: PAINTS[project.paint].color,
           totalCents: total,
           lineItems: items,
         });
@@ -230,9 +240,10 @@ export class InvoiceService {
 
   async markSent(id: string): Promise<void> {
     const sentAt = new Date();
+    const { paymentTermsDays } = await this.settings.get();
     const updated = await db
       .update(invoices)
-      .set({ sentAt, dueAt: addDays(sentAt, dueDays()) })
+      .set({ sentAt, dueAt: addDays(sentAt, paymentTermsDays) })
       .where(and(this.isOwned(id), isNull(invoices.sentAt), isNull(invoices.paidAt)))
       .returning({ id: invoices.id });
     if (updated.length > 0) return;

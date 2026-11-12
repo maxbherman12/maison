@@ -63,7 +63,7 @@ export function TextAreaField({
         {...props}
         aria-invalid={error ? true : undefined}
         className={cn(
-          'mt-1 w-full border-b border-foreground bg-transparent py-2 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-b-2',
+          'mt-1.5 block w-full resize-y border border-border bg-transparent px-2.5 py-2 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground',
           className
         )}
       />

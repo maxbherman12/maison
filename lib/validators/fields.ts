@@ -53,6 +53,18 @@ export function optionalMoneyField(message: string) {
     .transform((value) => dollarsToCents(Number(value)));
 }
 
+/** A dollar input that may be left blank, which means "not set" (null). */
+export function optionalPositiveMoneyField(message: string) {
+  return z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === '' || moneyIsValid(Number(value), 'positive'),
+      message
+    )
+    .transform((value) => (value === '' ? null : dollarsToCents(Number(value))));
+}
+
 export const HoursField = z
   .string()
   .trim()

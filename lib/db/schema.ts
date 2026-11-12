@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { BILLABLE_KINDS } from '../domain/billing';
 import { FURNITURE_STATUSES } from '../domain/furniture';
+import { INVOICE_STYLES } from '../domain/invoice-styles';
 import { PAINT_NAMES } from '../domain/paints';
 import { user } from './auth-schema';
 
@@ -23,6 +24,42 @@ const createdAt = () => timestamptz('created_at').notNull().defaultNow();
 export const furnitureStatus = pgEnum('furniture_status', FURNITURE_STATUSES);
 export const billableKind = pgEnum('billable_kind', BILLABLE_KINDS);
 export const paint = pgEnum('paint', PAINT_NAMES);
+export const invoiceStyle = pgEnum('invoice_style', INVOICE_STYLES);
+
+/**
+ * Per-account preferences: business details, invoice look, and defaults. The
+ * row is optional; `SettingsService` falls back to `DEFAULT_SETTINGS`.
+ */
+export const accountSettings = pgTable(
+  'account_settings',
+  {
+    ownerId: uuid('owner_id')
+      .primaryKey()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    companyName: text('company_name').notNull().default(''),
+    businessAddress: text('business_address').notNull().default(''),
+    businessEmail: text('business_email').notNull().default(''),
+    businessPhone: text('business_phone').notNull().default(''),
+    defaultHourlyRateCents: integer('default_hourly_rate_cents'),
+    invoiceStyle: invoiceStyle('invoice_style').notNull().default('gallery'),
+    paymentTermsDays: integer('payment_terms_days').notNull().default(14),
+    paymentNote: text('payment_note').notNull().default(''),
+    updatedAt: timestamptz('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    check(
+      'account_settings_payment_terms_valid',
+      sql`${table.paymentTermsDays} between 0 and 365`
+    ),
+    check(
+      'account_settings_hourly_rate_positive',
+      sql`${table.defaultHourlyRateCents} is null or ${table.defaultHourlyRateCents} > 0`
+    ),
+  ]
+);
 
 export const projects = pgTable(
   'projects',
@@ -62,6 +99,11 @@ export const invoices = pgTable(
     clientName: text('client_name').notNull(),
     projectName: text('project_name').notNull(),
     address: text('address').notNull(),
+    // The sender and look, snapshotted for the same reason.
+    style: invoiceStyle('style').notNull().default('gallery'),
+    fromName: text('from_name').notNull().default(''),
+    fromDetails: text('from_details').notNull().default(''),
+    paymentNote: text('payment_note').notNull().default(''),
     totalCents: integer('total_cents').notNull(),
     pathname: text('pathname').notNull(),
     createdAt: createdAt(),

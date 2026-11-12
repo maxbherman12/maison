@@ -1,25 +1,38 @@
 import type { Metadata } from 'next';
+import { SettingsForm } from '@/components/features/settings/SettingsForm';
+import { parseSettingsTab } from '@/components/features/settings/tabs';
 import { AppShell } from '@/components/layout/AppShell';
+import { requireUser } from '@/lib/auth/session';
+import { getServices } from '@/lib/services';
 
 export const metadata: Metadata = {
   title: 'Settings · Maison',
 };
 
-export default function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ settings }, user, { tab }] = await Promise.all([
+    getServices(),
+    requireUser(),
+    searchParams,
+  ]);
+
   return (
-    <AppShell>
-      <div className="w-full max-w-3xl md:mx-auto">
-        <span className="text-label text-muted-foreground">
-          Account
-        </span>
-        <h1 className="mt-1 font-serif text-heading font-normal">
+    <AppShell fill>
+      <header className="mx-auto w-full max-w-3xl shrink-0 px-6 pt-3 md:pt-8">
+        <span className="hidden text-label text-muted-foreground md:block">Account</span>
+        <h1 className="font-serif text-name font-normal md:mt-1 md:text-heading">
           Settings
         </h1>
-        <p className="mt-3 max-w-prose text-sm text-muted-foreground">
-          Profile, workspace, and billing preferences will live here. Nothing
-          to configure yet — your account and menu bar work as usual.
-        </p>
-      </div>
+      </header>
+      <SettingsForm
+        profile={{ name: user.name, image: user.image ?? null }}
+        settings={await settings.get()}
+        initialTab={parseSettingsTab(tab)}
+      />
     </AppShell>
   );
 }

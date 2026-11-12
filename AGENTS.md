@@ -66,7 +66,8 @@ No test, lint, or format scripts exist.
 - Domain types derive from the schema with `$inferSelect` in `lib/domain/types.ts`. `Invoice` omits `pathname` and `ownerId`; never select them into anything sent to the browser.
 - `lib/db/client.ts` caps the `pg` pool at 5 connections per instance and attaches it to the Vercel runtime lifecycle (`attachDatabasePool`). The pool is cached on `globalThis` in development.
 - `lib/services/index.ts` — `getServices()` is the single authenticated entry point and redirects to sign-in without a session. The factory behind it is private, so an owner id can only come from the session.
-- Services (`ProjectService`, `ChargeService`, `FurnitureService`, `InvoiceService`) take `ownerId` in the constructor. Writes to charges and furniture are one statement scoped by the `ownedProjectIds` subquery in `lib/services/scope.ts`. Throw `AppError` for every expected failure.
+- Services (`ProjectService`, `ChargeService`, `FurnitureService`, `InvoiceService`, `SettingsService`) take `ownerId` in the constructor. Writes to charges and furniture are one statement scoped by the `ownedProjectIds` subquery in `lib/services/scope.ts`. Throw `AppError` for every expected failure.
+- `account_settings` holds one optional row per account (business details, invoice style, payment terms, payment note, default hourly rate). `SettingsService.get()` falls back to `DEFAULT_SETTINGS` in `lib/domain/settings.ts`; writes upsert. The profile name lives in `users.name` and is saved with the settings.
 - `lib/actions/*` — each action takes `unknown`, parses with a Zod schema, and runs inside `runAction`, which maps `AppError`/`ZodError` to `{ ok: false, error }`, hides anything unexpected, and revalidates the app.
 - `lib/validators/*` — one schema per form, used by the browser resolver (`raw: true`) and the action. Numeric inputs are strings; the dollars-to-cents transform runs only in the action's parse.
 
@@ -115,7 +116,7 @@ No test, lint, or format scripts exist.
 - `/projects/[id]` — project overview, rendered by `[id]/layout.tsx` so it stays mounted behind flows. Its `page.tsx` is intentionally empty.
 - Flows, each rendered in `FlowPanel`: `/projects/new`, `/projects/[id]/edit`, `/projects/[id]/log` (`?type=furniture` skips the type question), `/projects/[id]/items/[itemId]`, `/projects/[id]/invoices/new`, `/projects/[id]/invoices/[invoiceId]`
 - `/earnings` — money received by month and by client
-- `/settings` — placeholder settings page
+- `/settings` — Profile (name and business details) / Invoices tabs in one form (`?tab=` picks the first tab). The invoice style picker saves instantly; everything else saves with the form.
 - `/admin` — admin-only account list with impersonation
 - Routes under `/projects/[id]` load through `load-project.ts`, which renders not-found for a bad or unowned id.
 
@@ -137,7 +138,8 @@ No test, lint, or format scripts exist.
 - Invoiced items are locked: only furniture status can change. Services return a 409 for anything else.
 - `InvoiceService.generate` is one transaction: lock per owner, lock the pending rows, recompute amounts from the database, allocate the number, snapshot the bill-to details and line items, render the PDF, upload, commit. The client only sends item ids.
 - Invoice numbers are integers per account, displayed with `formatInvoiceNumber`.
-- Invoice status is derived from `sent_at`, `due_at`, and `paid_at`.
+- Invoice status is derived from `sent_at`, `due_at`, and `paid_at`. `due_at` is `sent_at` plus the account's `payment_terms_days`.
+- Each invoice snapshots its look and sender (`style`, `from_name`, `from_details`, `payment_note`) at generation, so settings changes only affect new invoices. Invoice styles are token sets in `lib/domain/invoice-styles.ts`, read by `InvoiceDocument`, the settings preview, and the PDF; add a style by adding an entry there.
 
 ## Lists
 

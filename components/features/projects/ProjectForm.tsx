@@ -26,10 +26,13 @@ import { TextField } from '@/components/ui/form-field';
 export function ProjectForm({
   project,
   initialPaint = 'verdigris',
+  initialHourlyRate = '',
   closeHref,
 }: {
   project?: Project;
   initialPaint?: Paint;
+  /** Pre-fills the rate of a new project, from the account's default. */
+  initialHourlyRate?: string;
   closeHref: string;
 }) {
   const router = useRouter();
@@ -40,7 +43,7 @@ export function ProjectForm({
       client: project?.client ?? '',
       name: project?.name ?? '',
       address: project?.address ?? '',
-      hourlyRate: project ? centsToInput(project.hourlyRateCents) : '',
+      hourlyRate: project ? centsToInput(project.hourlyRateCents) : initialHourlyRate,
       paint: project?.paint ?? initialPaint,
     },
   });

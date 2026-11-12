@@ -79,6 +79,9 @@ export function InvoiceDetailView({
         </div>
         <InvoiceDocument
           label={`Invoice ${number}`}
+          style={invoice.style}
+          from={{ name: invoice.fromName, details: invoice.fromDetails }}
+          paymentNote={invoice.paymentNote}
           billTo={{
             client: invoice.clientName,
             project: invoice.projectName,

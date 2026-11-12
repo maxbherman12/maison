@@ -5,16 +5,19 @@ import { ChargeService } from './charges';
 import { FurnitureService } from './furniture';
 import { InvoiceService } from './invoices';
 import { ProjectService } from './projects';
+import { SettingsService } from './settings';
 
 const blobStore = createBlobStore();
 
 /** Private on purpose: only the authenticated entry point may supply an owner id. */
-function createServices(ownerId: string) {
+function createServices(ownerId: string, ownerName: string) {
+  const settings = new SettingsService(ownerId);
   return {
     projects: new ProjectService(ownerId),
     charges: new ChargeService(ownerId),
     furniture: new FurnitureService(ownerId),
-    invoices: new InvoiceService(ownerId, blobStore),
+    invoices: new InvoiceService(ownerId, blobStore, settings, ownerName),
+    settings,
   };
 }
 
@@ -27,5 +30,5 @@ export type Services = ReturnType<typeof createServices>;
  */
 export async function getServices(): Promise<Services> {
   const user = await requireUser();
-  return createServices(user.id);
+  return createServices(user.id, user.name);
 }
