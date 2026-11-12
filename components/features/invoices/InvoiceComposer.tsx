@@ -12,7 +12,8 @@ import {
 } from '@/lib/domain/billing';
 import { formatDate } from '@/lib/domain/dates';
 import { formatMoney } from '@/lib/domain/money';
-import type { ProjectDetail } from '@/lib/domain/types';
+import type { InvoiceIssuer } from '@/lib/domain/settings';
+import type { AccountSettings, ProjectDetail } from '@/lib/domain/types';
 import { cn } from '@/lib/utils';
 import { Confirmation } from '@/components/layout/Confirmation';
 import { FlowBack, FlowBody, FlowFooter } from '@/components/layout/FlowPanel';
@@ -34,9 +35,14 @@ function itemDetail(item: BillableItem): string {
 export function InvoiceComposer({
   project,
   issueDate,
+  settings,
+  issuer,
 }: {
   project: ProjectDetail;
   issueDate: Date;
+  /** The account's current invoice preferences, used for the draft. */
+  settings: AccountSettings;
+  issuer: InvoiceIssuer;
 }) {
   const closeHref = `/projects/${project.id}`;
   const { run, pending, error } = useAction();
@@ -104,6 +110,9 @@ export function InvoiceComposer({
         </div>
         <InvoiceDocument
           label="Draft"
+          style={settings.invoiceStyle}
+          from={issuer}
+          paymentNote={settings.paymentNote}
           billTo={{
             client: project.client,
             project: project.name,
@@ -164,7 +173,10 @@ export function InvoiceComposer({
           })}
         </InvoiceDocument>
         <p className="pt-2.5 text-center text-label text-muted-foreground">
-          Tap a line to leave it off this invoice.
+          Tap a line to leave it off this invoice.{' '}
+          <Link href="/settings?tab=invoices" className="underline underline-offset-2">
+            Change style
+          </Link>
         </p>
         {error && <Alert className="mt-3">{error}</Alert>}
       </FlowBody>
