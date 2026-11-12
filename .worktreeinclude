@@ -1,0 +1,2 @@
+# Ignored files treehouse copies from the main checkout into each worktree it hands out.
+.env.local
