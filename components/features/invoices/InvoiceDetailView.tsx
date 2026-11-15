@@ -21,6 +21,7 @@ import { FlowBack, FlowBody, FlowFooter } from '@/components/layout/FlowPanel';
 import { Alert } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Toast, useNotice } from '@/components/ui/toast';
 import { InvoiceDocument } from './InvoiceDocument';
 import { useInvoiceHandoff } from './useInvoiceHandoff';
 
@@ -83,6 +84,7 @@ export function InvoiceDetailView({
 }) {
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const { run, pending, error } = useAction();
+  const [notice, setNotice] = useNotice(6000);
 
   const status = getInvoiceStatus(invoice);
   const number = formatInvoiceNumber(invoice.number);
@@ -94,6 +96,8 @@ export function InvoiceDetailView({
   const handOff = useInvoiceHandoff({
     pdfHref,
     filename: invoicePdfFilename(invoice.number),
+    onRecipientCopied: (email) =>
+      setNotice({ tone: 'success', text: `Copied ${email}. Paste it into To:` }),
   });
 
   async function emailInvoice() {
@@ -216,6 +220,8 @@ export function InvoiceDetailView({
           </Button>
         )}
       </FlowFooter>
+
+      <Toast notice={notice} />
 
       {confirmation && (
         <ConfirmDialog

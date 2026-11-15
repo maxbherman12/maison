@@ -150,3 +150,6 @@ A small client hook that keeps the browser API details out of the view.
 - **What share targets do with the text.** iOS Mail uses `title` as the subject and `text` as the body. Some apps ignore `title`. That's acceptable, since the PDF is the important part.
 - **Download and mailto in one click.** Starting a download and a `mailto:` navigation from one click should work in the major browsers, but I'll check all three. If one blocks it, I'll start the download first and open mailto on the next tick.
 - **Body length.** The `mailto:` body is limited to about 2,000 characters in some clients. The drafted body is far shorter, but a very long payment note could get close.
+
+## Revision (review, 2026-11-15)
+Testing on desktop showed the `mailto:` draft arriving without the PDF, as expected but not what the user wanted. The user chose to put attaching first: any browser that can share files (desktop Chrome and Safari included) now uses the share sheet, and the client's email is copied to the clipboard with a toast reminding you to paste it into To:. Browsers without file sharing (Firefox desktop) keep the `mailto:` draft plus download.

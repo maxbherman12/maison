@@ -6,12 +6,14 @@ import { mailtoHref, type InvoiceEmail } from '@/lib/domain/invoice-email';
 /** What happened when the draft was handed to the designer's own apps. */
 export type HandoffResult = 'shared' | 'drafted' | 'cancelled';
 
-/** Phones share the PDF itself; desktops get a mailto draft plus a download. */
-function prefersShareSheet(): boolean {
-  return (
-    typeof navigator.canShare === 'function' &&
-    window.matchMedia('(pointer: coarse)').matches
-  );
+/**
+ * The share sheet attaches the PDF but cannot set a recipient; a mailto draft
+ * sets the recipient but cannot attach. Attaching matters more, so the share
+ * sheet wins wherever the browser can share files (phones, and Chrome or
+ * Safari on desktop), and the recipient is copied to the clipboard instead.
+ */
+function canShareFiles(): boolean {
+  return typeof navigator.canShare === 'function';
 }
 
 function isAbort(error: unknown): boolean {
@@ -28,20 +30,23 @@ function download(href: string, filename: string) {
 /**
  * Hands an invoice to the designer's own mail app. The app never sends mail.
  *
- * On phones the PDF is fetched ahead of time, because iOS Safari forgets the
- * tap if `navigator.share` waits on a fetch, and then refuses to share.
+ * Where files can be shared, the PDF is fetched ahead of time, because Safari
+ * forgets the click if `navigator.share` waits on a fetch, and then refuses.
  */
 export function useInvoiceHandoff({
   pdfHref,
   filename,
+  onRecipientCopied,
 }: {
   pdfHref: string;
   filename: string;
+  /** Called once the recipient is on the clipboard, ready to paste into To:. */
+  onRecipientCopied?: (email: string) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    if (!prefersShareSheet()) return;
+    if (!canShareFiles()) return;
 
     const controller = new AbortController();
     fetch(pdfHref, { signal: controller.signal })
@@ -59,6 +64,13 @@ export function useInvoiceHandoff({
 
   async function handOff(draft: InvoiceEmail): Promise<HandoffResult> {
     if (file) {
+      if (draft.to) {
+        // Not awaited: `share` must run while the click still counts.
+        navigator.clipboard
+          ?.writeText(draft.to)
+          .then(() => onRecipientCopied?.(draft.to))
+          .catch(() => {});
+      }
       try {
         await navigator.share({
           files: [file],
