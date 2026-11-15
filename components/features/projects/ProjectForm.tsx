@@ -43,6 +43,8 @@ export function ProjectForm({
       client: project?.client ?? '',
       name: project?.name ?? '',
       address: project?.address ?? '',
+      clientEmail: project?.clientEmail ?? '',
+      clientPhone: project?.clientPhone ?? '',
       hourlyRate: project ? centsToInput(project.hourlyRateCents) : initialHourlyRate,
       paint: project?.paint ?? initialPaint,
     },
@@ -78,6 +80,26 @@ export function ProjectForm({
 
         <div className="grid gap-2.5">
           <TextField label="Client name" {...register('client')} error={errors.client} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label="Client email"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              placeholder="Optional"
+              {...register('clientEmail')}
+              error={errors.clientEmail}
+            />
+            <TextField
+              label="Phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="Optional"
+              {...register('clientPhone')}
+              error={errors.clientPhone}
+            />
+          </div>
           <TextField label="Project" {...register('name')} error={errors.name} />
           <div className="grid grid-cols-2 gap-4">
             <TextField

@@ -71,6 +71,8 @@ export const projects = pgTable(
     client: text('client').notNull(),
     name: text('name').notNull(),
     address: text('address').notNull().default(''),
+    clientEmail: text('client_email').notNull().default(''),
+    clientPhone: text('client_phone').notNull().default(''),
     hourlyRateCents: integer('hourly_rate_cents').notNull(),
     paint: paint('paint').notNull().default('verdigris'),
     createdAt: createdAt(),

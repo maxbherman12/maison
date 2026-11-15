@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { INVOICE_STYLES } from '@/lib/domain/invoice-styles';
 import { MAX_PAYMENT_TERMS_DAYS } from '@/lib/domain/settings';
-import { optionalPositiveMoneyField, optionalText, requiredText } from './fields';
+import {
+  OptionalEmailField,
+  optionalPositiveMoneyField,
+  optionalText,
+  requiredText,
+} from './fields';
 
 const MAX_TEXT = 200;
 const MAX_NOTE = 500;
@@ -27,13 +32,7 @@ export const SettingsSchema = z
     businessAddress: optionalText.pipe(
       z.string().max(MAX_NOTE, `Keep the address under ${MAX_NOTE} characters`)
     ),
-    businessEmail: z
-      .string()
-      .trim()
-      .refine(
-        (value) => value === '' || z.email().safeParse(value).success,
-        'Enter a valid email'
-      ),
+    businessEmail: OptionalEmailField,
     businessPhone: shortText,
     defaultHourlyRate: optionalPositiveMoneyField(
       'Default rate must be greater than zero'

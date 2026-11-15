@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { Download, Mail } from 'lucide-react';
 import { markInvoicePaid, markInvoiceSent } from '@/lib/actions/invoices';
 import { useAction } from '@/lib/actions/use-action';
 import { BILLABLE_KIND_LABELS } from '@/lib/domain/billing';
 import { formatDate } from '@/lib/domain/dates';
+import { buildInvoiceEmail } from '@/lib/domain/invoice-email';
 import {
   formatInvoiceNumber,
   getInvoiceStatus,
+  invoicePdfFilename,
   type InvoiceStatus,
 } from '@/lib/domain/invoices';
 import { formatMoney } from '@/lib/domain/money';
@@ -18,6 +22,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { InvoiceDocument } from './InvoiceDocument';
+import { useInvoiceHandoff } from './useInvoiceHandoff';
 
 const CONFIRMATIONS = {
   sent: {
@@ -35,6 +40,12 @@ const CONFIRMATIONS = {
 } as const;
 
 type Confirmation = keyof typeof CONFIRMATIONS;
+
+/** `afterHandoff` asks whether a just-drafted email actually went out. */
+interface Confirming {
+  step: Confirmation;
+  afterHandoff?: boolean;
+}
 
 const NEXT_STEP: Record<InvoiceStatus, Confirmation | null> = {
   Issued: 'sent',
@@ -58,18 +69,52 @@ function statusLine(invoice: InvoiceDetail, status: InvoiceStatus): string {
 
 export function InvoiceDetailView({
   invoice,
+  clientEmail,
+  paymentTermsDays,
+  editProjectHref,
   closeHref,
 }: {
   invoice: InvoiceDetail;
+  /** Read live from the project, so an email added later is used right away. */
+  clientEmail: string;
+  paymentTermsDays: number;
+  editProjectHref: string;
   closeHref: string;
 }) {
-  const [confirming, setConfirming] = useState<Confirmation | null>(null);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
   const { run, pending, error } = useAction();
 
   const status = getInvoiceStatus(invoice);
   const number = formatInvoiceNumber(invoice.number);
   const nextStep = NEXT_STEP[status];
-  const confirmation = confirming && CONFIRMATIONS[confirming];
+  const confirmation = confirming && CONFIRMATIONS[confirming.step];
+  const canEmail = status !== 'Paid';
+
+  const pdfHref = `/api/invoices/${invoice.id}/pdf`;
+  const handOff = useInvoiceHandoff({
+    pdfHref,
+    filename: invoicePdfFilename(invoice.number),
+  });
+
+  async function emailInvoice() {
+    const result = await handOff(
+      buildInvoiceEmail({
+        number: invoice.number,
+        clientName: invoice.clientName,
+        projectName: invoice.projectName,
+        totalCents: invoice.totalCents,
+        dueAt: invoice.dueAt,
+        paymentTermsDays,
+        paymentNote: invoice.paymentNote,
+        fromName: invoice.fromName,
+        clientEmail,
+      })
+    );
+    // Marking sent stays the designer's call: they may discard the draft.
+    if (result !== 'cancelled' && status === 'Issued') {
+      setConfirming({ step: 'sent', afterHandoff: true });
+    }
+  }
 
   return (
     <>
@@ -122,23 +167,50 @@ export function InvoiceDetailView({
             </div>
           ))}
         </InvoiceDocument>
+        {canEmail && !clientEmail && (
+          <p className="mt-3 text-label text-muted-foreground">
+            No email on file for {invoice.clientName}.{' '}
+            <Link href={editProjectHref} className="text-foreground underline underline-offset-4">
+              Add one
+            </Link>
+          </p>
+        )}
         {error && !confirmation && <Alert className="mt-3">{error}</Alert>}
       </FlowBody>
 
       <FlowFooter>
         <a
-          href={`/api/invoices/${invoice.id}/pdf`}
+          href={pdfHref}
           download
-          className={buttonVariants({ variant: 'outline', size: 'xl' })}
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'xl' }),
+            canEmail && 'max-md:w-13 max-md:flex-none max-md:px-0'
+          )}
         >
-          Download PDF
+          {canEmail && <Download className="md:hidden" aria-hidden="true" />}
+          <span className={cn(canEmail && 'max-md:sr-only')}>Download PDF</span>
         </a>
+        {canEmail && (
+          <Button
+            type="button"
+            size="xl"
+            variant={status === 'Issued' ? 'default' : 'outline'}
+            disabled={pending}
+            onClick={emailInvoice}
+            className="max-md:px-3"
+          >
+            <Mail className="max-md:hidden" aria-hidden="true" />
+            Email invoice
+          </Button>
+        )}
         {nextStep && (
           <Button
             type="button"
             size="xl"
+            variant={nextStep === 'sent' ? 'outline' : 'default'}
             disabled={pending}
-            onClick={() => setConfirming(nextStep)}
+            onClick={() => setConfirming({ step: nextStep })}
+            className="max-md:px-3"
           >
             {CONFIRMATIONS[nextStep].label}
           </Button>
@@ -147,9 +219,14 @@ export function InvoiceDetailView({
 
       {confirmation && (
         <ConfirmDialog
-          title={`${confirmation.label} ${number}?`}
+          title={
+            confirming.afterHandoff
+              ? `Did you send ${number}?`
+              : `${confirmation.label} ${number}?`
+          }
           description={confirmation.description}
           confirmLabel={confirmation.label}
+          cancelLabel={confirming.afterHandoff ? 'Not yet' : undefined}
           tone={confirmation.tone}
           pending={pending}
           error={error}

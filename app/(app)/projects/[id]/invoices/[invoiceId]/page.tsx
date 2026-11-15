@@ -11,14 +11,23 @@ export default async function InvoiceDetailPage({
   const { project, services } = await loadProject(params);
   const { invoiceId } = await params;
 
-  const invoice = await services.invoices.get(invoiceId);
+  const [invoice, settings] = await Promise.all([
+    services.invoices.get(invoiceId),
+    services.settings.get(),
+  ]);
   if (!invoice || invoice.projectId !== project.id) notFound();
 
   const closeHref = `/projects/${project.id}`;
 
   return (
     <FlowPanel title="Invoice" closeHref={closeHref} paint={project.paint}>
-      <InvoiceDetailView invoice={invoice} closeHref={closeHref} />
+      <InvoiceDetailView
+        invoice={invoice}
+        clientEmail={project.clientEmail}
+        paymentTermsDays={settings.paymentTermsDays}
+        editProjectHref={`/projects/${project.id}/edit`}
+        closeHref={closeHref}
+      />
     </FlowPanel>
   );
 }
