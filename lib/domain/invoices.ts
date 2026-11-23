@@ -16,3 +16,8 @@ export function getInvoiceStatus(
 export function formatInvoiceNumber(number: number): string {
   return `#${number}`;
 }
+
+/** The file name an invoice PDF is downloaded and shared under. */
+export function invoicePdfFilename(number: number): string {
+  return `invoice-${number}.pdf`;
+}

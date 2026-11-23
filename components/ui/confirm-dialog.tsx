@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onClose: () => void;
   pending?: boolean;
@@ -25,6 +26,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = 'Cancel',
   onConfirm,
   onClose,
   pending = false,
@@ -45,7 +47,7 @@ export function ConfirmDialog({
           disabled={pending}
           className="w-full sm:w-auto"
         >
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           type="button"

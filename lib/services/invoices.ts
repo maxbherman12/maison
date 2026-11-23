@@ -22,6 +22,7 @@ import { buildBillableItems, totalCents } from '@/lib/domain/billing';
 import { addDays } from '@/lib/domain/dates';
 import type { PaidInvoice } from '@/lib/domain/earnings';
 import { isUuid } from '@/lib/domain/ids';
+import { invoicePdfFilename } from '@/lib/domain/invoices';
 import { PAINTS } from '@/lib/domain/paints';
 import { invoiceIssuer } from '@/lib/domain/settings';
 import type {
@@ -280,7 +281,7 @@ export class InvoiceService {
     if (!invoice) return null;
 
     const blob = await this.blobs.get(invoice.pathname);
-    return blob && { ...blob, filename: `invoice-${invoice.number}.pdf` };
+    return blob && { ...blob, filename: invoicePdfFilename(invoice.number) };
   }
 
   private findState(id: string) {

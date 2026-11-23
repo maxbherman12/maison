@@ -28,12 +28,15 @@ export function ProjectForm({
   initialPaint = 'verdigris',
   initialHourlyRate = '',
   closeHref,
+  focusEmail = false,
 }: {
   project?: Project;
   initialPaint?: Paint;
   /** Pre-fills the rate of a new project, from the account's default. */
   initialHourlyRate?: string;
   closeHref: string;
+  /** Opens with the email focused, when arriving to add or change it. */
+  focusEmail?: boolean;
 }) {
   const router = useRouter();
   const { run, pending, error } = useAction();
@@ -43,6 +46,8 @@ export function ProjectForm({
       client: project?.client ?? '',
       name: project?.name ?? '',
       address: project?.address ?? '',
+      clientEmail: project?.clientEmail ?? '',
+      clientPhone: project?.clientPhone ?? '',
       hourlyRate: project ? centsToInput(project.hourlyRateCents) : initialHourlyRate,
       paint: project?.paint ?? initialPaint,
     },
@@ -77,7 +82,29 @@ export function ProjectForm({
         </div>
 
         <div className="grid gap-2.5">
-          <TextField label="Client name" {...register('client')} error={errors.client} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Client name" {...register('client')} error={errors.client} />
+            <TextField
+              label="Phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="Optional"
+              {...register('clientPhone')}
+              error={errors.clientPhone}
+            />
+          </div>
+          {/* Full width: addresses run long, and a cut-off one is hard to check. */}
+          <TextField
+            label="Client email"
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            placeholder="Optional"
+            autoFocus={focusEmail}
+            {...register('clientEmail')}
+            error={errors.clientEmail}
+          />
           <TextField label="Project" {...register('name')} error={errors.name} />
           <div className="grid grid-cols-2 gap-4">
             <TextField

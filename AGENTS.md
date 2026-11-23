@@ -61,6 +61,7 @@ No test, lint, or format scripts exist.
 ## Data layer
 
 - PostgreSQL via Drizzle ORM. Schema in `lib/db/schema.ts` (auth tables in `lib/db/auth-schema.ts`), client in `lib/db/client.ts`.
+- Projects carry optional client contact details: `client_email` and `client_phone` (`not null default ''`).
 - **Money is integer cents** (`*_cents`). Dollars exist only in form inputs and formatters (`lib/domain/money.ts`). Never do arithmetic on dollars.
 - Every primary key and row-reference column is a Postgres `uuid`. Better Auth is configured with `advanced.database.generateId: 'uuid'`.
 - Domain types derive from the schema with `$inferSelect` in `lib/domain/types.ts`. `Invoice` omits `pathname` and `ownerId`; never select them into anything sent to the browser.
@@ -134,7 +135,7 @@ No test, lint, or format scripts exist.
 - Billable items are `charges` and `furniture_items`. A charge with `hours` is logged time; a charge with null `hours` is a flat custom charge. `invoice_id` points at the invoice it was billed on; `null` means pending.
 - `buildBillableItems` in `lib/domain/billing.ts` derives pending items for the project lists, the composer, and generated invoices, so they always agree.
 - `outstanding` is a SQL aggregate of uninvoiced items. Nothing stores it.
-- There is no email sending. Creating an invoice makes the PDF; the designer sends it and marks it sent.
+- There is no email sending. Creating an invoice makes the PDF; the designer sends it and marks it sent. **Email invoice** (`useInvoiceHandoff`) hands a draft from `lib/domain/invoice-email.ts` to the designer's own apps: the share sheet with the PDF attached wherever the browser can share files (phones, desktop Chrome/Safari), with the client's email copied to the clipboard because a share cannot set a recipient; otherwise a `mailto:` draft plus a PDF download. The email is the project's current `client_email` (not snapshotted), shown under the invoice with a link to `/projects/[id]/edit?invoice=<id>`, which returns to the invoice after saving. Email invoice stays disabled until the hook knows which path it will take. Afterwards it offers Mark sent; it never marks sent by itself.
 - Invoiced items are locked: only furniture status can change. Services return a 409 for anything else.
 - `InvoiceService.generate` is one transaction: lock per owner, lock the pending rows, recompute amounts from the database, allocate the number, snapshot the bill-to details and line items, render the PDF, upload, commit. The client only sends item ids.
 - Invoice numbers are integers per account, displayed with `formatInvoiceNumber`.

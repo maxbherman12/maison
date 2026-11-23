@@ -21,6 +21,15 @@ export function requiredText(message: string) {
 
 export const optionalText = z.string().trim().default('');
 
+/** An email address that may be left blank. */
+export const OptionalEmailField = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value === '' || z.email().safeParse(value).success,
+    'Enter a valid email'
+  );
+
 export const DateField = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')

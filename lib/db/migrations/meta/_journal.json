@@ -29,6 +29,13 @@
       "when": 1794450232445,
       "tag": "0003_account_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794780244000,
+      "tag": "0004_project_client_contact",
+      "breakpoints": true
     }
   ]
 }
