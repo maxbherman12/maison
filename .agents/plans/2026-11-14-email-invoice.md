@@ -153,3 +153,15 @@ A small client hook that keeps the browser API details out of the view.
 
 ## Revision (review, 2026-11-15)
 Testing on desktop showed the `mailto:` draft arriving without the PDF, as expected but not what the user wanted. The user chose to put attaching first: any browser that can share files (desktop Chrome and Safari included) now uses the share sheet, and the client's email is copied to the clipboard with a toast reminding you to paste it into To:. Browsers without file sharing (Firefox desktop) keep the `mailto:` draft plus download.
+
+## Revision (PR review fixes, 2026-11-22)
+Review of PR #14 found gaps in the hand-off flow. Fixes:
+
+1. **"Add one" comes back to the invoice.** The edit page accepts `?invoice=<uuid>`. When it's a valid id, `closeHref` (Back and the post-save redirect) becomes that invoice, and the email field gets focus. *Alternative rejected:* a generic `?return=<path>`. It would work for more routes, but every caller then needs open-redirect checks, and only one route needs it today. A typed id can only build a path inside the same project.
+2. **Say where the email goes before the tap, not in a toast.** The share sheet covers a phone screen, so a "Copied" toast went unseen. A line under the invoice now reads "Sending to jane@… We'll copy it for the To: field." (that last sentence only in share mode), with a **Change** link that uses the same return path. A toast appears only if the copy fails.
+3. **No mixed fallback.** The hook reports `mode`: `checking`, then `share` or `mailto`. Email invoice stays disabled while it's `checking`, so a fast tap can't land on the `mailto:` path on a phone. A `busy` flag disables the button while the share sheet is open, so a second tap can't throw `InvalidStateError` and fall through to a download.
+4. **Prefetch only when the button is shown.** `useInvoiceHandoff({ enabled: canEmail })`, so Paid invoices don't download the PDF.
+5. **Singular wording:** "Payment is due within 1 day."
+6. **Project form layout.** At 375px, a half-width email field cut off ordinary addresses. Rows are now Client name | Phone, then Client email at full width, so every column lines up with Address | Hourly rate. It's still four rows and fits a 375×667 screen without scrolling. *Rejected:* a 60/40 email/phone split, because its column edge no longer lines up with the row below.
+
+Files: `app/(app)/projects/[id]/edit/page.tsx`, `ProjectForm.tsx`, `InvoiceDetailView.tsx`, `useInvoiceHandoff.ts`, `lib/domain/invoice-email.ts`, `invoices/[invoiceId]/page.tsx`, `AGENTS.md`.

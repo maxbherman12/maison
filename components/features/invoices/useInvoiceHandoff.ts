@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { mailtoHref, type InvoiceEmail } from '@/lib/domain/invoice-email';
 
 /** What happened when the draft was handed to the designer's own apps. */
 export type HandoffResult = 'shared' | 'drafted' | 'cancelled';
+
+/**
+ * How the draft will be handed off. `checking` lasts until the PDF is ready
+ * to share (or sharing turns out to be unavailable), so a fast tap can't land
+ * on a different path from a later one.
+ */
+export type HandoffMode = 'checking' | 'share' | 'mailto';
 
 /**
  * The share sheet attaches the PDF but cannot set a recipient; a mailto draft
@@ -36,58 +43,80 @@ function download(href: string, filename: string) {
 export function useInvoiceHandoff({
   pdfHref,
   filename,
-  onRecipientCopied,
+  enabled = true,
+  onCopyFailed,
 }: {
   pdfHref: string;
   filename: string;
-  /** Called once the recipient is on the clipboard, ready to paste into To:. */
-  onRecipientCopied?: (email: string) => void;
+  /** False skips the PDF prefetch, e.g. when the Email button is hidden. */
+  enabled?: boolean;
+  /** Called if the recipient could not be put on the clipboard. */
+  onCopyFailed?: (email: string) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<HandoffMode>('checking');
+  const [busy, setBusy] = useState(false);
+  // A ref as well as state: two taps in one frame both see `busy === false`.
+  const busyRef = useRef(false);
 
   useEffect(() => {
-    if (!canShareFiles()) return;
+    if (!enabled) return;
+    if (!canShareFiles()) {
+      setMode('mailto');
+      return;
+    }
 
     const controller = new AbortController();
     fetch(pdfHref, { signal: controller.signal })
       .then((response) => (response.ok ? response.blob() : null))
       .then((blob) => {
-        if (!blob) return;
-        const pdf = new File([blob], filename, { type: 'application/pdf' });
-        if (navigator.canShare({ files: [pdf] })) setFile(pdf);
+        const pdf = blob && new File([blob], filename, { type: 'application/pdf' });
+        if (pdf && navigator.canShare({ files: [pdf] })) {
+          setFile(pdf);
+          setMode('share');
+        } else {
+          setMode('mailto');
+        }
       })
-      // Without a file the hand-off falls back to mailto.
-      .catch(() => {});
+      .catch(() => {
+        if (!controller.signal.aborted) setMode('mailto');
+      });
 
     return () => controller.abort();
-  }, [pdfHref, filename]);
+  }, [enabled, pdfHref, filename]);
 
-  async function handOff(draft: InvoiceEmail): Promise<HandoffResult> {
-    if (file) {
-      if (draft.to) {
-        // Not awaited: `share` must run while the click still counts.
-        navigator.clipboard
-          ?.writeText(draft.to)
-          .then(() => onRecipientCopied?.(draft.to))
-          .catch(() => {});
-      }
-      try {
-        await navigator.share({
-          files: [file],
-          title: draft.subject,
-          text: draft.body,
-        });
-        return 'shared';
-      } catch (error) {
-        if (isAbort(error)) return 'cancelled';
-        // Any other refusal falls through to the mailto draft.
-      }
+  async function share(pdf: File, draft: InvoiceEmail): Promise<HandoffResult | null> {
+    if (draft.to) {
+      // Not awaited: `share` must run while the click still counts.
+      const copied = navigator.clipboard?.writeText(draft.to);
+      if (copied) copied.catch(() => onCopyFailed?.(draft.to));
+      else onCopyFailed?.(draft.to);
     }
-
-    download(pdfHref, filename);
-    window.location.href = mailtoHref(draft);
-    return 'drafted';
+    try {
+      await navigator.share({ files: [pdf], title: draft.subject, text: draft.body });
+      return 'shared';
+    } catch (error) {
+      if (isAbort(error)) return 'cancelled';
+      return null; // Any other refusal falls back to the mailto draft.
+    }
   }
 
-  return handOff;
+  async function handOff(draft: InvoiceEmail): Promise<HandoffResult> {
+    if (busyRef.current) return 'cancelled';
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const shared = file && (await share(file, draft));
+      if (shared) return shared;
+
+      download(pdfHref, filename);
+      window.location.href = mailtoHref(draft);
+      return 'drafted';
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  return { handOff, mode, ready: mode !== 'checking' && !busy };
 }

@@ -31,9 +31,9 @@ function dueSentence(input: InvoiceEmailInput, now: Date): string {
   }
   // Not sent yet: quote the terms, so the email never names a date that
   // disagrees with the one marking it sent will set.
-  return input.paymentTermsDays === 0
-    ? 'Payment is due on receipt.'
-    : `Payment is due within ${input.paymentTermsDays} days.`;
+  const days = input.paymentTermsDays;
+  if (days === 0) return 'Payment is due on receipt.';
+  return `Payment is due within ${days} ${days === 1 ? 'day' : 'days'}.`;
 }
 
 /**

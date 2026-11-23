@@ -79,6 +79,7 @@ export function InvoiceDetailView({
   /** Read live from the project, so an email added later is used right away. */
   clientEmail: string;
   paymentTermsDays: number;
+  /** Edits the project's contact details and comes back to this invoice. */
   editProjectHref: string;
   closeHref: string;
 }) {
@@ -93,11 +94,12 @@ export function InvoiceDetailView({
   const canEmail = status !== 'Paid';
 
   const pdfHref = `/api/invoices/${invoice.id}/pdf`;
-  const handOff = useInvoiceHandoff({
+  const { handOff, mode, ready } = useInvoiceHandoff({
     pdfHref,
     filename: invoicePdfFilename(invoice.number),
-    onRecipientCopied: (email) =>
-      setNotice({ tone: 'success', text: `Copied ${email}. Paste it into To:` }),
+    enabled: canEmail,
+    onCopyFailed: (email) =>
+      setNotice({ tone: 'error', text: `Couldn't copy ${email}. Type it into To:` }),
   });
 
   async function emailInvoice() {
@@ -171,11 +173,22 @@ export function InvoiceDetailView({
             </div>
           ))}
         </InvoiceDocument>
-        {canEmail && !clientEmail && (
+        {canEmail && (
           <p className="mt-3 text-label text-muted-foreground">
-            No email on file for {invoice.clientName}.{' '}
-            <Link href={editProjectHref} className="text-foreground underline underline-offset-4">
-              Add one
+            {clientEmail ? (
+              <>
+                Sending to{' '}
+                <span className="break-all text-foreground">{clientEmail}</span>.
+                {mode === 'share' && " We'll copy it for the To: field."}{' '}
+              </>
+            ) : (
+              <>No email on file for {invoice.clientName}. </>
+            )}
+            <Link
+              href={editProjectHref}
+              className="text-foreground underline underline-offset-4"
+            >
+              {clientEmail ? 'Change' : 'Add one'}
             </Link>
           </p>
         )}
@@ -199,7 +212,8 @@ export function InvoiceDetailView({
             type="button"
             size="xl"
             variant={status === 'Issued' ? 'default' : 'outline'}
-            disabled={pending}
+            disabled={pending || !ready}
+            aria-busy={mode === 'checking' || undefined}
             onClick={emailInvoice}
             className="max-md:px-3"
           >

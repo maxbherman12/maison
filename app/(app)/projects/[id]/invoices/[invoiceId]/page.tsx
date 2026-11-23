@@ -25,7 +25,7 @@ export default async function InvoiceDetailPage({
         invoice={invoice}
         clientEmail={project.clientEmail}
         paymentTermsDays={settings.paymentTermsDays}
-        editProjectHref={`/projects/${project.id}/edit`}
+        editProjectHref={`/projects/${project.id}/edit?invoice=${invoice.id}`}
         closeHref={closeHref}
       />
     </FlowPanel>
