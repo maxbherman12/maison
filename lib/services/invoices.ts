@@ -46,6 +46,17 @@ const lineItemCount = sql<number>`(
   where ${invoiceLineItems.invoiceId} = ${invoices.id}
 )`.mapWith(Number);
 
+const productProfitCents = sql<number>`coalesce((
+  select sum(${invoiceLineItems.amountCents} - coalesce(${invoiceLineItems.costCents}, 0))
+  from ${invoiceLineItems}
+  where ${invoiceLineItems.invoiceId} = ${invoices.id} and ${invoiceLineItems.kind} = 'furniture'
+), 0)`.mapWith(Number);
+
+const feesCents = sql<number>`coalesce((
+  select sum(${invoiceLineItems.amountCents}) from ${invoiceLineItems}
+  where ${invoiceLineItems.invoiceId} = ${invoices.id} and ${invoiceLineItems.kind} <> 'furniture'
+), 0)`.mapWith(Number);
+
 export class InvoiceService {
   constructor(
     private readonly ownerId: string,
@@ -72,6 +83,8 @@ export class InvoiceService {
         client: projects.client,
         paint: projects.paint,
         totalCents: invoices.totalCents,
+        productProfitCents,
+        feesCents,
         paidAt: invoices.paidAt,
       })
       .from(invoices)
@@ -156,6 +169,7 @@ export class InvoiceService {
         const items = buildBillableItems({
           charges: pendingCharges,
           furniture: pendingFurniture,
+          markupBps: project.markupBps,
         });
         if (items.length !== itemIds.length) {
           throw new AppError(
@@ -198,6 +212,7 @@ export class InvoiceService {
             sourceId: item.id,
             title: item.title,
             amountCents: item.amountCents,
+            costCents: item.kind === 'furniture' ? item.costCents : null,
             position,
           }))
         );
@@ -208,11 +223,15 @@ export class InvoiceService {
             .set({ invoiceId: id })
             .where(inArray(charges.id, pendingCharges.map((row) => row.id)));
         }
-        if (pendingFurniture.length > 0) {
+        // Freeze each piece's client price, so a later markup change cannot
+        // alter what an invoiced piece shows. The billed amount derives from
+        // it, trade, and exclude_trade, all locked from here on.
+        for (const item of items) {
+          if (item.kind !== 'furniture') continue;
           await tx
             .update(furnitureItems)
-            .set({ invoiceId: id })
-            .where(inArray(furnitureItems.id, pendingFurniture.map((row) => row.id)));
+            .set({ invoiceId: id, clientPriceCents: item.priceCents })
+            .where(eq(furnitureItems.id, item.id));
         }
 
         const pdf = await renderInvoicePdf({
@@ -226,7 +245,8 @@ export class InvoiceService {
           paymentNote: settings.paymentNote,
           accentColor: PAINTS[project.paint].color,
           totalCents: total,
-          lineItems: items,
+          // Only what is printed: trade (costCents) never reaches the document.
+          lineItems: items.map(({ kind, title, amountCents }) => ({ kind, title, amountCents })),
         });
         await this.blobs.put(pathname, pdf, { contentType: 'application/pdf' });
         uploaded = true;

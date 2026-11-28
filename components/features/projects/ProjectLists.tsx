@@ -13,6 +13,7 @@ import {
 } from '@/lib/domain/furniture';
 import { formatInvoiceNumber, getInvoiceStatus } from '@/lib/domain/invoices';
 import { formatMoney } from '@/lib/domain/money';
+import { furnitureBilledCents } from '@/lib/domain/pricing';
 import type { InvoiceListItem, ProjectDetail } from '@/lib/domain/types';
 import { cn } from '@/lib/utils';
 import {
@@ -134,7 +135,7 @@ export function FurnitureList({ project }: { project: ProjectDetail }) {
                 detail={[
                   item.invoiceId
                     ? 'Invoiced'
-                    : `${formatMoney(item.tradeCents)} to invoice`,
+                    : `${formatMoney(furnitureBilledCents(item, project.markupBps))} to invoice`,
                   item.vendor,
                 ]
                   .filter(Boolean)

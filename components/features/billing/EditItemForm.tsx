@@ -18,6 +18,7 @@ import type { ActionResult } from '@/lib/actions/result';
 import { useAction } from '@/lib/actions/use-action';
 import type { FurnitureStatus } from '@/lib/domain/furniture';
 import { centsToInput, formatMoney } from '@/lib/domain/money';
+import { furniturePriceCents, furniturePricing, marginCents, markupToInput } from '@/lib/domain/pricing';
 import type { Charge, FurnitureItem } from '@/lib/domain/types';
 import {
   EditHoursSchema,
@@ -198,8 +199,9 @@ export function EditChargeForm({ charge, closeHref }: FormProps & { charge: Char
 
 export function EditFurnitureForm({
   item,
+  projectMarkupBps,
   closeHref,
-}: FormProps & { item: FurnitureItem }) {
+}: FormProps & { item: FurnitureItem; projectMarkupBps: number }) {
   const router = useRouter();
   const { run, pending, error } = useAction();
   const form = useForm<FurnitureFormValues>({
@@ -209,6 +211,11 @@ export function EditFurnitureForm({
       vendor: item.vendor,
       retail: centsToInput(item.retailCents),
       trade: centsToInput(item.tradeCents),
+      markup: markupToInput(item.markupBps ?? projectMarkupBps),
+      clientPrice: centsToInput(furniturePriceCents(item, projectMarkupBps)),
+      customMarkup: item.markupBps !== null,
+      customPrice: item.clientPriceCents !== null,
+      excludeTrade: item.excludeTrade,
       link: item.link,
       tags: item.tags.join(', '),
       notes: item.notes,
@@ -228,7 +235,7 @@ export function EditFurnitureForm({
         pending={pending}
         error={error}
       >
-        <FurnitureFields />
+        <FurnitureFields projectMarkupBps={projectMarkupBps} />
       </EditFrame>
     </FormProvider>
   );
@@ -237,8 +244,11 @@ export function EditFurnitureForm({
 /** A piece already on an invoice: delivery continues, so only status can change. */
 export function InvoicedFurnitureForm({
   item,
+  projectMarkupBps,
   closeHref,
-}: FormProps & { item: FurnitureItem }) {
+}: FormProps & { item: FurnitureItem; projectMarkupBps: number }) {
+  // Invoicing froze the client price on the row, so this is what was billed.
+  const { billedCents, costCents } = furniturePricing(item, projectMarkupBps);
   const router = useRouter();
   const { run, pending, error } = useAction();
   const form = useForm<{ status: FurnitureStatus }>({
@@ -257,7 +267,13 @@ export function InvoicedFurnitureForm({
         error={error}
       >
         <p className="text-muted-foreground">
-          {[item.vendor, `Trade ${formatMoney(item.tradeCents)}`, `Retail ${formatMoney(item.retailCents)}`]
+          {[
+            item.vendor,
+            `Trade ${formatMoney(item.tradeCents)}`,
+            item.excludeTrade && 'Client paid trade',
+            `Billed ${formatMoney(billedCents)}`,
+            `Margin ${formatMoney(marginCents(billedCents, costCents))}`,
+          ]
             .filter(Boolean)
             .join(' · ')}
         </p>

@@ -1,0 +1,1 @@
+ALTER TABLE "furniture_items" ADD COLUMN "exclude_trade" boolean DEFAULT false NOT NULL;

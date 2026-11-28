@@ -36,6 +36,20 @@
       "when": 1794780244000,
       "tag": "0004_project_client_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795545564323,
+      "tag": "0005_furniture_markup",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795872474235,
+      "tag": "0006_furniture_exclude_trade",
+      "breakpoints": true
     }
   ]
 }

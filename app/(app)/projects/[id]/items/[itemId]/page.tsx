@@ -25,9 +25,17 @@ function itemForm(project: ProjectDetail, itemId: string) {
   if (!item) notFound();
 
   return item.invoiceId ? (
-    <InvoicedFurnitureForm item={item} closeHref={closeHref} />
+    <InvoicedFurnitureForm
+      item={item}
+      projectMarkupBps={project.markupBps}
+      closeHref={closeHref}
+    />
   ) : (
-    <EditFurnitureForm item={item} closeHref={closeHref} />
+    <EditFurnitureForm
+      item={item}
+      projectMarkupBps={project.markupBps}
+      closeHref={closeHref}
+    />
   );
 }
 

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   index,
@@ -16,6 +17,7 @@ import { BILLABLE_KINDS } from '../domain/billing';
 import { FURNITURE_STATUSES } from '../domain/furniture';
 import { INVOICE_STYLES } from '../domain/invoice-styles';
 import { PAINT_NAMES } from '../domain/paints';
+import { MAX_MARKUP_BPS } from '../domain/pricing';
 import { user } from './auth-schema';
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -74,12 +76,18 @@ export const projects = pgTable(
     clientEmail: text('client_email').notNull().default(''),
     clientPhone: text('client_phone').notNull().default(''),
     hourlyRateCents: integer('hourly_rate_cents').notNull(),
+    // Default markup on this project's furniture, in basis points.
+    markupBps: integer('markup_bps').notNull().default(0),
     paint: paint('paint').notNull().default('verdigris'),
     createdAt: createdAt(),
   },
   (table) => [
     index('projects_owner_id_idx').on(table.ownerId),
     check('projects_hourly_rate_positive', sql`${table.hourlyRateCents} > 0`),
+    check(
+      'projects_markup_valid',
+      sql`${table.markupBps} between 0 and ${sql.raw(String(MAX_MARKUP_BPS))}`
+    ),
   ]
 );
 
@@ -131,6 +139,8 @@ export const invoiceLineItems = pgTable(
     sourceId: uuid('source_id').notNull(),
     title: text('title').notNull(),
     amountCents: integer('amount_cents').notNull(),
+    // What the designer paid (trade) on furniture lines; null otherwise.
+    costCents: integer('cost_cents'),
     position: integer('position').notNull(),
   },
   (table) => [
@@ -139,6 +149,10 @@ export const invoiceLineItems = pgTable(
       table.sourceId
     ),
     check('invoice_line_items_amount_valid', sql`${table.amountCents} >= 0`),
+    check(
+      'invoice_line_items_cost_valid',
+      sql`${table.costCents} is null or ${table.costCents} >= 0`
+    ),
   ]
 );
 
@@ -181,6 +195,13 @@ export const furnitureItems = pgTable(
     vendor: text('vendor').notNull().default(''),
     retailCents: integer('retail_cents').notNull(),
     tradeCents: integer('trade_cents').notNull(),
+    // Overrides the project markup for this piece. Null inherits it.
+    markupBps: integer('markup_bps'),
+    // A fixed price that beats any markup while pending; once invoiced, the
+    // price that was billed.
+    clientPriceCents: integer('client_price_cents'),
+    // True when the client paid the vendor directly: only the markup is billed.
+    excludeTrade: boolean('exclude_trade').notNull().default(false),
     link: text('link').notNull().default(''),
     tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
     notes: text('notes').notNull().default(''),
@@ -196,6 +217,14 @@ export const furnitureItems = pgTable(
     check(
       'furniture_items_prices_valid',
       sql`${table.retailCents} >= 0 and ${table.tradeCents} >= 0`
+    ),
+    check(
+      'furniture_items_markup_valid',
+      sql`${table.markupBps} is null or ${table.markupBps} between 0 and ${sql.raw(String(MAX_MARKUP_BPS))}`
+    ),
+    check(
+      'furniture_items_client_price_valid',
+      sql`${table.clientPriceCents} is null or ${table.clientPriceCents} >= 0`
     ),
   ]
 );

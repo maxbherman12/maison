@@ -13,7 +13,14 @@ const outstandingCents = sql<number>`(
     select sum(${charges.amountCents}) from ${charges}
     where ${charges.projectId} = ${projects.id} and ${charges.invoiceId} is null
   ), 0) + coalesce((
-    select sum(${furnitureItems.tradeCents}) from ${furnitureItems}
+    -- The SQL twin of furnitureBilledCents in lib/domain/pricing.ts.
+    select sum(greatest(coalesce(
+      ${furnitureItems.clientPriceCents},
+      (${furnitureItems.tradeCents}::bigint
+        * (10000 + coalesce(${furnitureItems.markupBps}, ${projects.markupBps}))
+        + 5000) / 10000
+    ) - case when ${furnitureItems.excludeTrade} then ${furnitureItems.tradeCents} else 0 end, 0))
+    from ${furnitureItems}
     where ${furnitureItems.projectId} = ${projects.id} and ${furnitureItems.invoiceId} is null
   ), 0)
 )`.mapWith(Number);
