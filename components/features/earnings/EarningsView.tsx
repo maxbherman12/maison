@@ -12,6 +12,8 @@ export function EarningsView({ months }: { months: EarningsMonth[] }) {
 
   const shown = months.filter((month) => !selectedKey || month.key === selectedKey);
   const total = sumCents(shown, (month) => month.totalCents);
+  const fees = sumCents(shown, (month) => month.feesCents);
+  const productProfit = sumCents(shown, (month) => month.productProfitCents);
   const clients = totalByClient(shown.flatMap((month) => month.clients));
 
   const peak = Math.max(...months.map((month) => month.totalCents));
@@ -30,6 +32,9 @@ export function EarningsView({ months }: { months: EarningsMonth[] }) {
       <section className="px-6 pt-1.5 md:p-8">
         <p className="text-label text-muted-foreground">{heading}</p>
         <p className="font-serif text-amount tabular-nums">{formatMoneyWhole(total)}</p>
+        <p className="text-label text-muted-foreground tabular-nums">
+          Fees {formatMoneyWhole(fees)} · Product profit {formatMoneyWhole(productProfit)}
+        </p>
 
         <div
           role="group"

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dollarsToCents } from '@/lib/domain/money';
+import { MAX_MARKUP_BPS, percentToBps } from '@/lib/domain/pricing';
 
 /**
  * Building blocks for the form schemas. Every schema in this folder is run
@@ -73,6 +74,38 @@ export function optionalPositiveMoneyField(message: string) {
     )
     .transform((value) => (value === '' ? null : dollarsToCents(Number(value))));
 }
+
+/** A dollar input that may be left blank, which means "not set" (null). Zero is allowed. */
+export function optionalNullableMoneyField(message: string) {
+  return z
+    .string()
+    .trim()
+    .refine((value) => value === '' || moneyIsValid(Number(value), 'zero'), message)
+    .transform((value) => (value === '' ? null : dollarsToCents(Number(value))));
+}
+
+const MAX_MARKUP_PERCENT = MAX_MARKUP_BPS / 100;
+
+function markupIsValid(value: string): boolean {
+  const percent = parseNumber(value);
+  return Number.isFinite(percent) && percent >= 0 && percent <= MAX_MARKUP_PERCENT;
+}
+
+const markupMessage = `Enter a markup from 0 to ${MAX_MARKUP_PERCENT}%`;
+
+/** A required percent input that yields basis points. */
+export const MarkupField = z
+  .string()
+  .trim()
+  .refine(markupIsValid, markupMessage)
+  .transform((value) => percentToBps(Number(value)));
+
+/** A percent input that may be left blank, which means "inherit" (null). */
+export const OptionalMarkupField = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || markupIsValid(value), markupMessage)
+  .transform((value) => (value === '' ? null : percentToBps(Number(value))));
 
 export const HoursField = z
   .string()

@@ -8,6 +8,7 @@ import { addFurniture } from '@/lib/actions/furniture';
 import { useAction } from '@/lib/actions/use-action';
 import { todayLocal } from '@/lib/domain/dates';
 import { dollarsToCents } from '@/lib/domain/money';
+import { furniturePricing, markupToInput, pricingLabel } from '@/lib/domain/pricing';
 import type { Project } from '@/lib/domain/types';
 import {
   FlatChargeSchema,
@@ -29,6 +30,7 @@ import {
   FurniturePieceFields,
   FurniturePriceFields,
   FurnitureStatusField,
+  typedPiece,
 } from '@/components/features/furniture/FurnitureFields';
 import type { SavedEntry } from './ProjectLog';
 
@@ -77,18 +79,18 @@ export function LogFormFrame({
 const FURNITURE_STAGES = {
   piece: {
     question: 'What did you buy?',
-    fields: ['name', 'vendor', 'trade', 'retail'],
-    body: (
+    fields: ['name', 'vendor', 'trade', 'retail', 'markup', 'clientPrice'],
+    body: (project: Project) => (
       <>
         <FurniturePieceFields />
-        <FurniturePriceFields />
+        <FurniturePriceFields projectMarkupBps={project.markupBps} />
       </>
     ),
   },
   details: {
     question: 'Any last details?',
     fields: ['status', 'link', 'tags', 'notes'],
-    body: (
+    body: () => (
       <>
         <FurnitureStatusField />
         <FurnitureExtraFields />
@@ -97,7 +99,11 @@ const FURNITURE_STAGES = {
   },
 } satisfies Record<
   string,
-  { question: string; fields: (keyof FurnitureFormValues)[]; body: ReactNode }
+  {
+    question: string;
+    fields: (keyof FurnitureFormValues)[];
+    body: (project: Project) => ReactNode;
+  }
 >;
 
 export type FurnitureStage = keyof typeof FURNITURE_STAGES;
@@ -117,6 +123,11 @@ export function LogFurnitureForm({
       vendor: '',
       retail: '',
       trade: '',
+      markup: markupToInput(project.markupBps),
+      clientPrice: '',
+      customMarkup: false,
+      customPrice: false,
+      excludeTrade: false,
       link: '',
       tags: '',
       notes: '',
@@ -129,13 +140,15 @@ export function LogFurnitureForm({
   const save = form.handleSubmit((values) =>
     run(
       () => addFurniture(project.id, values),
-      ({ id }) =>
+      ({ id }) => {
+        const pricing = furniturePricing(typedPiece(values), project.markupBps);
         onSaved({
           id,
           kind: 'furniture',
-          amountCents: dollarsToCents(Number(values.trade)),
-          summary: `${values.name}, at trade price.`,
-        })
+          amountCents: pricing.priceCents,
+          summary: `${values.name}, at ${pricingLabel(pricing)}.`,
+        });
+      }
     )
   );
 
@@ -155,7 +168,7 @@ export function LogFurnitureForm({
         error={error}
         submitLabel={isLastStage ? 'Save' : 'Next'}
       >
-        {body}
+        {body(project)}
       </LogFormFrame>
     </FormProvider>
   );

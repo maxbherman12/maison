@@ -1,3 +1,4 @@
+import { sumCents } from './money';
 import type { Paint } from './paints';
 
 export interface PaidInvoice {
@@ -5,6 +6,10 @@ export interface PaidInvoice {
   client: string;
   paint: Paint;
   totalCents: number;
+  /** Client price minus trade across the invoice's furniture lines. */
+  productProfitCents: number;
+  /** Hours and charges: everything that is not furniture. */
+  feesCents: number;
   paidAt: Date;
 }
 
@@ -19,6 +24,8 @@ export interface EarningsMonth {
   key: string;
   label: string;
   totalCents: number;
+  productProfitCents: number;
+  feesCents: number;
   clients: EarningsByClient[];
 }
 
@@ -73,7 +80,9 @@ export function buildEarningsMonths(
     return {
       key,
       label: monthLabel.format(month),
-      totalCents: inMonth.reduce((total, invoice) => total + invoice.totalCents, 0),
+      totalCents: sumCents(inMonth, (invoice) => invoice.totalCents),
+      productProfitCents: sumCents(inMonth, (invoice) => invoice.productProfitCents),
+      feesCents: sumCents(inMonth, (invoice) => invoice.feesCents),
       clients: totalByClient(inMonth),
     };
   });

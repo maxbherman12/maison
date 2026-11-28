@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { createProject, updateProject } from '@/lib/actions/projects';
 import { useAction } from '@/lib/actions/use-action';
 import { centsToInput } from '@/lib/domain/money';
+import { markupToInput } from '@/lib/domain/pricing';
 import {
   PAINTS,
   PAINT_NAMES,
@@ -49,6 +50,7 @@ export function ProjectForm({
       clientEmail: project?.clientEmail ?? '',
       clientPhone: project?.clientPhone ?? '',
       hourlyRate: project ? centsToInput(project.hourlyRateCents) : initialHourlyRate,
+      markup: project ? markupToInput(project.markupBps) : '0',
       paint: project?.paint ?? initialPaint,
     },
   });
@@ -106,13 +108,13 @@ export function ProjectForm({
             error={errors.clientEmail}
           />
           <TextField label="Project" {...register('name')} error={errors.name} />
+          <TextField
+            label="Address"
+            placeholder="Optional"
+            {...register('address')}
+            error={errors.address}
+          />
           <div className="grid grid-cols-2 gap-4">
-            <TextField
-              label="Address"
-              placeholder="Optional"
-              {...register('address')}
-              error={errors.address}
-            />
             <TextField
               label="Hourly rate"
               type="number"
@@ -121,6 +123,15 @@ export function ProjectForm({
               prefix="$"
               {...register('hourlyRate')}
               error={errors.hourlyRate}
+            />
+            <TextField
+              label="Furniture markup (%)"
+              type="number"
+              step="0.01"
+              min={0}
+              inputMode="decimal"
+              {...register('markup')}
+              error={errors.markup}
             />
           </div>
 

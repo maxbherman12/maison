@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PAINT_NAMES } from '@/lib/domain/paints';
 import {
+  MarkupField,
   moneyField,
   OptionalEmailField,
   optionalText,
@@ -19,11 +20,13 @@ export const ProjectSchema = z
       z.string().max(MAX_PHONE, `Keep the phone under ${MAX_PHONE} characters`)
     ),
     hourlyRate: moneyField('Hourly rate must be greater than zero', 'positive'),
+    markup: MarkupField,
     paint: z.enum(PAINT_NAMES),
   })
-  .transform(({ hourlyRate, ...project }) => ({
+  .transform(({ hourlyRate, markup, ...project }) => ({
     ...project,
     hourlyRateCents: hourlyRate,
+    markupBps: markup,
   }));
 
 export type ProjectFormValues = z.input<typeof ProjectSchema>;
